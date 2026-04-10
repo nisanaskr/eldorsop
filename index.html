@@ -323,6 +323,7 @@
                 ok.innerText = "Sıfırla"; 
                 ok.className = "w-full px-4 py-4 bg-red-600 text-white rounded-2xl text-base font-bold active:scale-95 transition-transform";
                 ok.onclick = () => { if(onConfirm) onConfirm(); els.customModal.style.display = 'none'; };
+                
                 const cnl = document.createElement('button'); 
                 cnl.innerText = "İptal"; 
                 cnl.className = "w-full px-4 py-4 bg-slate-100 rounded-2xl text-base font-bold active:scale-95 transition-transform";
@@ -557,7 +558,9 @@
             if (qrc) {
                 const a = document.createElement('a');
                 a.href = qrc.toDataURL("image/png");
-                a.download = "QR_Kod.png";
+                // GÜNCELLEME: Dosya adı "SOP BAŞLIĞI_QR" formatına getirildi
+                const filename = (els.sopTitleInput.value || "SOP") + "_QR.png";
+                a.download = filename;
                 a.click();
             }
         };
