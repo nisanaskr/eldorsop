@@ -110,14 +110,9 @@
         <!-- Başlık Paneli (Header) -->
         <div class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             
-            <!-- 1. LOGO -->
-            <div onclick="document.getElementById('logoInput').click()" class="w-20 h-20 shrink-0 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-[#000080] transition-colors overflow-hidden relative group">
-                <img id="logoPreview" class="hidden w-full h-full object-contain p-2">
-                <div id="logoPlaceholder" class="flex flex-col items-center gap-1">
-                    <i data-lucide="image" class="w-6 h-6 text-slate-300"></i>
-                    <span class="text-[10px] font-bold text-slate-400">LOGO</span>
-                </div>
-                <input type="file" id="logoInput" class="hidden" accept="image/*">
+            <!-- 1. SABİT LOGO -->
+            <div class="w-20 h-20 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white border border-slate-100 p-1">
+                <img id="logoFixed" src="1631376975192.jpg" alt="Eldor Logo" class="w-full h-full object-contain">
             </div>
 
             <!-- 2. METİN ALANI -->
@@ -125,7 +120,10 @@
                 <h1 class="text-xl font-bold text-[#000080] mb-1 leading-none">Eldor SOP Oluşturucu</h1>
                 
                 <div class="flex flex-col gap-3">
+                    <!-- SOP BAŞLIĞI -->
                     <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-xl py-1 transition-colors" placeholder="SOP Başlığı (Örn: Paketleme Hattı)">
+                    
+                    <!-- PROJE ADI -->
                     <input type="text" id="sopSubtitleInput" class="w-full text-sm border-b-2 border-slate-50 focus:border-slate-300 focus:outline-none py-1 transition-colors" placeholder="Proje Adı">
                 </div>
             </div>
@@ -154,8 +152,8 @@
             </div>
         </div>
 
-        <!-- Editör Alanı -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Görsel Editör Alanı -->
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                     <div class="flex border-b border-slate-100 mb-6 gap-6">
@@ -179,7 +177,7 @@
                                     <i data-lucide="info" class="w-4 h-4 text-blue-500"></i> Bilgi Noktası
                                 </button>
                             </div>
-                            <button id="clearImageBtn" class="px-4 py-2 text-xs font-bold rounded-lg border border-red-100 text-red-600 hover:bg-red-50 flex items-center gap-2">
+                            <button id="clearImageBtn" class="px-4 py-2 text-xs font-bold rounded-lg border border-red-100 text-red-600 hover:bg-red-50 flex items-center gap-2 transition-all">
                                 <i data-lucide="image-minus" class="w-4 h-4"></i> Görseli Kaldır
                             </button>
                         </div>
@@ -191,6 +189,7 @@
                 </div>
             </div>
 
+            <!-- Sağ Paneller -->
             <div class="space-y-6">
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px]">
                     <div class="flex items-center justify-between mb-6">
@@ -229,8 +228,7 @@
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
         let tokenClient;
 
-        // --- Akıllı Token Yönetimi ---
-        // sessionStorage sayfayı yenileyince silinmez, ancak sekme kapanınca silinir.
+        // --- Oturum Hafızası (Sekme Kapanana Kadar) ---
         let getSavedToken = () => sessionStorage.getItem('eldor_drive_token');
         let saveToken = (t) => sessionStorage.setItem('eldor_drive_token', t);
         let clearToken = () => sessionStorage.removeItem('eldor_drive_token');
@@ -238,7 +236,7 @@
         // --- Uygulama Durumu ---
         window.activeIdx = 0; 
         window.images = [null, null]; 
-        window.companyLogo = null;
+        window.companyLogo = null; // Sabit logo buraya yüklenecek
         window.points = []; 
         window.warnings = []; 
         window.currentMode = 'instruction';
@@ -252,7 +250,6 @@
             loginError: document.getElementById('loginError'),
             mainContent: document.getElementById('mainContent'),
             fileInput: document.getElementById('fileInput'),
-            logoInput: document.getElementById('logoInput'),
             uploadArea: document.getElementById('uploadArea'),
             editorArea: document.getElementById('editorArea'),
             mainCanvas: document.getElementById('mainCanvas'),
@@ -262,8 +259,6 @@
             warningsContainer: document.getElementById('warningsContainer'),
             sopTitleInput: document.getElementById('sopTitleInput'),
             sopSubtitleInput: document.getElementById('sopSubtitleInput'),
-            logoPreview: document.getElementById('logoPreview'),
-            logoPlaceholder: document.getElementById('logoPlaceholder'),
             tabBtns: [document.getElementById('tab0'), document.getElementById('tab1')],
             toolInstruction: document.getElementById('toolInstruction'),
             toolMarker: document.getElementById('toolMarker'),
@@ -288,6 +283,7 @@
 
         const ctx = els.mainCanvas.getContext('2d');
 
+        // --- Giriş Yönetimi ---
         els.loginForm.onsubmit = (e) => {
             e.preventDefault();
             const u = document.getElementById('usernameInput').value.trim();
@@ -302,12 +298,13 @@
         };
 
         els.logoutBtn.onclick = () => {
-            if(confirm("Çıkış yaptığınızda Drive erişimi de dahil olmak üzere oturumunuz sonlanacaktır. Emin misiniz?")) {
-                clearToken(); // Çıkışta Drive yetkisini temizle
+            if(confirm("Çıkış yaptığınızda oturumunuz sonlanacaktır. Emin misiniz?")) {
+                clearToken();
                 location.reload();
             }
         };
 
+        // --- Özel Modal ---
         function showModal(title, message, isConfirm = false, onConfirm = null, qrLink = null, type = 'success') {
             els.modalTitle.innerText = title; 
             els.modalMessage.innerText = message;
@@ -319,10 +316,10 @@
                 els.qrSection.classList.remove('hidden');
                 els.qrLinkText.innerText = qrLink;
                 new QRCode(els.qrContainer, { text: qrLink, width: 160, height: 160, colorDark: "#000080", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
-                const caption = document.createElement('p');
-                caption.innerText = els.sopTitleInput.value.toUpperCase() || 'SOP DOKÜMANI';
-                caption.className = "text-[9px] font-bold text-slate-700 mt-2 text-center w-[160px] truncate leading-none";
-                els.qrContainer.appendChild(caption);
+                const cap = document.createElement('p');
+                cap.innerText = els.sopTitleInput.value.toUpperCase() || 'SOP DOKÜMANI';
+                cap.className = "text-[9px] font-bold text-slate-700 mt-2 text-center w-[160px] truncate leading-none";
+                els.qrContainer.appendChild(cap);
             }
 
             if (isConfirm) {
@@ -332,7 +329,7 @@
                 cnl.onclick = () => { els.customModal.style.display = 'none'; };
                 els.modalActions.append(ok, cnl);
             } else {
-                const ok = document.createElement('button'); ok.innerText = "Tamam"; ok.className = "w-full px-4 py-4 bg-[#000080] text-white rounded-2xl text-base font-bold active:scale-95 transition-transform";
+                const ok = document.createElement('button'); ok.innerText = "Kapat"; ok.className = "w-full px-4 py-4 bg-[#000080] text-white rounded-2xl text-base font-bold active:scale-95 transition-transform";
                 ok.onclick = () => { els.customModal.style.display = 'none'; };
                 els.modalActions.appendChild(ok);
             }
@@ -340,6 +337,7 @@
             if (window.lucide) lucide.createIcons();
         }
 
+        // --- Drive Fonksiyonları ---
         async function getOrCreateFolder(accessToken, folderName) {
             const query = `name='${folderName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
             const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, { headers: { 'Authorization': 'Bearer ' + accessToken } });
@@ -357,7 +355,7 @@
                 const projectName = els.sopSubtitleInput.value.trim() || "Genel SOP Projeleri";
                 const folderId = await getOrCreateFolder(accessToken, projectName);
                 
-                els.loadingText.innerText = "Drive'a gönderiliyor...";
+                els.loadingText.innerText = "Drive'a aktarılıyor...";
                 const metadata = { name: `SOP_${els.sopTitleInput.value || 'Dokuman'}.pdf`, mimeType: 'application/pdf', parents: [folderId] };
                 const boundary = '-------314159265358979323846';
                 const delimiter = "\r\n--" + boundary + "\r\n";
@@ -383,19 +381,14 @@
                 };
             } catch (e) {
                 els.loading.classList.add('hidden');
-                showModal("Hata", "İşlem sırasında bir hata oluştu: " + e.message, false, null, null, 'error');
+                showModal("Hata", "Drive işlemi sırasında hata oluştu.", false, null, null, 'error');
             }
         }
 
         async function uploadToGoogleDrive(pdfBlob) {
             if (!tokenClient) return;
-
             const savedToken = getSavedToken();
-            if (savedToken) {
-                executeUpload(savedToken, pdfBlob);
-                return;
-            }
-
+            if (savedToken) { executeUpload(savedToken, pdfBlob); return; }
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) return;
                 saveToken(resp.access_token);
@@ -410,7 +403,7 @@
         els.toolMarker.onclick = () => { window.currentMode = 'marker'; els.toolMarker.classList.add('active'); els.toolInstruction.classList.remove('active'); };
         els.clearImageBtn.onclick = () => { if (confirm("Görseli silmek istediğinize emin misiniz?")) { window.images[window.activeIdx] = null; window.points = window.points.filter(p => p.imgIdx !== window.activeIdx); els.fileInput.value = ""; renderAll(); } };
         els.fileInput.onchange = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { window.images[window.activeIdx] = i; renderAll(); }; i.src = ev.target.result; }; r.readAsDataURL(f); };
-        els.logoInput.onchange = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { window.companyLogo = i; els.logoPreview.src = ev.target.result; els.logoPreview.classList.remove('hidden'); els.logoPlaceholder.classList.add('hidden'); }; i.src = ev.target.result; }; r.readAsDataURL(f); };
+
         els.mainCanvas.onclick = (e) => { if (!window.images[window.activeIdx]) return; const rect = els.mainCanvas.getBoundingClientRect(); const px = ((e.clientX - rect.left) / rect.width) * 100; const py = ((e.clientY - rect.top) / rect.height) * 100; window.points.push({ px, py, description: '', isSilent: window.currentMode === 'marker', imgIdx: window.activeIdx, isManual: false }); renderAll(); };
         els.addManualBtn.onclick = () => { window.points.push({ px: null, py: null, description: '', isSilent: false, imgIdx: -1, isManual: true }); renderAll(); };
         els.addWarningBtn.onclick = () => { window.warnings.push({ text: '' }); renderWarnings(); };
@@ -431,7 +424,7 @@
                 }
                 if (!p.isSilent) {
                     const tr = document.createElement('tr'); tr.className = "group hover:bg-slate-50 transition-colors";
-                    tr.innerHTML = `<td class="py-3 px-2 align-top"><span class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-white text-[10px] ${p.isManual ? 'bg-blue-500' : 'bg-red-500'}">${ic}</span></td><td class="py-2 px-2"><textarea class="w-full bg-transparent border-0 focus:ring-0 text-slate-700 text-xs resize-none outline-none" rows="2" oninput="window.points[${idx}].description=this.value">${p.description || ''}</textarea></td><td class="py-2 px-2 text-right"><button onclick="window.points.splice(${idx}, 1); renderAll();" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button></td>`;
+                    tr.innerHTML = `<td class="py-3 px-2 align-top"><span class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-white text-[10px] ${p.isManual ? 'bg-blue-500' : 'bg-red-500'}">${ic}</span></td><td class="py-2 px-2"><textarea class="w-full bg-transparent border-0 focus:ring-0 text-slate-700 text-xs resize-none leading-relaxed outline-none" rows="2" oninput="window.points[${idx}].description=this.value">${p.description || ''}</textarea></td><td class="py-2 px-2 text-right"><button onclick="window.points.splice(${idx}, 1); renderAll();" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button></td>`;
                     els.tableBody.appendChild(tr);
                 }
             });
@@ -456,9 +449,15 @@
             totalH += window.points.filter(p => !p.isSilent).length * 100 + 400;
             canv.width = width; canv.height = Math.max(totalH, 1200);
             ex.fillStyle = 'white'; ex.fillRect(0, 0, width, canv.height);
-            if (window.companyLogo) { const s = Math.min(120/window.companyLogo.width, 120/window.companyLogo.height); ex.drawImage(window.companyLogo, 60, 50, window.companyLogo.width*s, window.companyLogo.height*s); }
+            
+            // PDF için Sabit Logo Kullanımı
+            if (window.companyLogo) {
+                const s = Math.min(120/window.companyLogo.width, 120/window.companyLogo.height);
+                ex.drawImage(window.companyLogo, 60, 50, window.companyLogo.width*s, window.companyLogo.height*s);
+            }
             ex.fillStyle = '#000080'; ex.font = 'bold 44px Arial'; ex.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP DOKÜMANI', 200, 95);
             ex.fillStyle = '#64748b'; ex.font = '24px Arial'; ex.fillText(els.sopSubtitleInput.value || '', 200, 140);
+            
             let curY = 280;
             window.images.forEach((img, idx) => {
                 if(!img) return;
@@ -487,10 +486,20 @@
 
         els.exportPdfBtn.onclick = async () => { els.loading.classList.remove('hidden'); try { const blob = await createPdfBlob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SOP_${els.sopTitleInput.value || 'Dokuman'}.pdf`; a.click(); } catch (e) { console.error(e); } els.loading.classList.add('hidden'); };
         els.exportDriveBtn.onclick = async () => { try { const blob = await createPdfBlob(); uploadToGoogleDrive(blob); } catch (e) { console.error(e); } };
-        els.resetBtn.onclick = () => { showModal("Sıfırla", "Tüm veriler temizlenecektir. Emin misiniz?", true, () => { window.points=[]; window.warnings=[]; window.images=[null,null]; els.sopTitleInput.value = ''; els.sopSubtitleInput.value = ''; els.logoPreview.classList.add('hidden'); els.logoPlaceholder.classList.remove('hidden'); window.companyLogo = null; renderAll(); renderWarnings(); }); };
+        els.resetBtn.onclick = () => { showModal("Sıfırla", "Tüm veriler temizlenecektir. Emin misiniz?", true, () => { window.points=[]; window.warnings=[]; window.images=[null,null]; els.sopTitleInput.value = ''; els.sopSubtitleInput.value = ''; renderAll(); renderWarnings(); }); };
         els.downloadQrBtn.onclick = () => { const qrc = els.qrContainer.querySelector('canvas') || els.qrContainer.querySelector('img'); if (qrc) { const imageData = qrc.src || qrc.toDataURL("image/png"); const a = document.createElement('a'); a.href = imageData; a.download = `${(els.sopTitleInput.value.trim() || "SOP").replace(/[/\\?%*:|"<>]/g, '-')}_QR.png`; a.click(); } };
 
-        window.onload = () => { if (window.lucide) lucide.createIcons(); gapi.load('client', () => { gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] }); }); tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: SCOPES, callback: '' }); };
+        window.onload = () => { 
+            if (window.lucide) lucide.createIcons(); 
+            
+            // Sabit Logoyu Belleğe Yükle
+            const logoImg = new Image();
+            logoImg.onload = () => { window.companyLogo = logoImg; };
+            logoImg.src = '1631376975192.jpg';
+
+            gapi.load('client', () => { gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] }); }); 
+            tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: SCOPES, callback: '' }); 
+        };
     </script>
 </body>
 </html>
