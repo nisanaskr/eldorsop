@@ -120,37 +120,40 @@
                 <input type="file" id="logoInput" class="hidden" accept="image/*">
             </div>
 
-            <!-- 2. METİN VE İŞLEM ALANI -->
+            <!-- 2. METİN ALANI (Dikey Stacked Başlıklar) -->
             <div class="flex-grow flex flex-col gap-4 w-full">
                 <h1 class="text-xl font-bold text-[#000080] mb-1 leading-none">Eldor SOP Oluşturucu</h1>
                 
-                <div class="flex flex-col gap-2">
-                    <!-- ÜST: SOP BAŞLIĞI -->
+                <div class="flex flex-col gap-3">
+                    <!-- SOP BAŞLIĞI -->
                     <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-xl py-1 transition-colors" placeholder="SOP Başlığı (Örn: Paketleme Hattı)">
                     
-                    <!-- ORTA: PDF VE DRIVE BUTONLARI (Onaylandığı gibi sağa tam bitiştirildi) -->
-                    <div class="flex bg-[#000080] rounded-lg shadow-md overflow-hidden h-10 w-fit my-1 self-end mr-0">
-                        <button id="exportPdfBtn" class="px-5 text-[13px] text-white font-bold hover:bg-[#000066] border-r border-[#ffffff22] transition-all flex items-center gap-2">
-                            <i data-lucide="file-text" class="w-4 h-4"></i> PDF İndir
-                        </button>
-                        <button id="exportDriveBtn" class="px-5 text-[13px] text-white font-bold hover:bg-[#000066] flex items-center gap-2 transition-all">
-                            <i data-lucide="hard-drive" class="w-4 h-4 text-green-400"></i> Drive'a Gönder
-                        </button>
-                    </div>
-
-                    <!-- ALT: PROJE ADI -->
+                    <!-- PROJE ADI -->
                     <input type="text" id="sopSubtitleInput" class="w-full text-sm border-b-2 border-slate-50 focus:border-slate-300 focus:outline-none py-1 transition-colors" placeholder="Proje Adı">
                 </div>
             </div>
 
-            <!-- 3. SAĞ GRUP: ÇÖP VE ÇIKIŞ -->
-            <div class="flex shrink-0 bg-white border border-slate-200 rounded-xl overflow-hidden h-10 shadow-sm ml-auto">
-                <button id="resetBtn" title="Her şeyi temizle" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 border-r border-slate-100 transition-all">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-                <button id="logoutBtn" title="Güvenli Çıkış" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-orange-50 hover:text-orange-500 transition-all">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                </button>
+            <!-- 3. SAĞ AKSİYON KULESİ (En Sağa Bitişik) -->
+            <div class="flex flex-col gap-3 shrink-0 ml-auto items-end">
+                <!-- Üst Grup: Sıfırla ve Çıkış -->
+                <div class="flex bg-white border border-slate-200 rounded-xl overflow-hidden h-10 shadow-sm">
+                    <button id="resetBtn" title="Her şeyi temizle" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 border-r border-slate-100 transition-all">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                    <button id="logoutBtn" title="Güvenli Çıkış" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-orange-50 hover:text-orange-500 transition-all">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Alt Grup: PDF ve Drive (En Sağa Bitişik) -->
+                <div class="flex bg-[#000080] rounded-lg shadow-md overflow-hidden h-10">
+                    <button id="exportPdfBtn" class="px-5 text-[13px] text-white font-bold hover:bg-[#000066] border-r border-[#ffffff22] transition-all flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> PDF İndir
+                    </button>
+                    <button id="exportDriveBtn" class="px-5 text-[13px] text-white font-bold hover:bg-[#000066] flex items-center gap-2 transition-all">
+                        <i data-lucide="hard-drive" class="w-4 h-4 text-green-400"></i> Drive'a Gönder
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -224,7 +227,7 @@
     <canvas id="exportCanvas" class="hidden"></canvas>
 
     <script>
-        // Google API Sabitleri
+        // Google API Sabitleri (ReferenceError'u önlemek için en üstte)
         const GOOGLE_CLIENT_ID = '1078405925531-o68nje98l03ct1e71uvnt2pe086grdiq.apps.googleusercontent.com'; 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -353,7 +356,7 @@
             if (window.lucide) lucide.createIcons();
         }
 
-        // Klasör bulma veya oluşturma
+        // Drive Klasörleme Fonksiyonu
         async function getOrCreateFolder(accessToken, folderName) {
             const query = `name='${folderName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
             const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, { headers: { 'Authorization': 'Bearer ' + accessToken } });
@@ -373,7 +376,7 @@
                 try {
                     const projectName = els.sopSubtitleInput.value.trim() || "Genel SOP Projeleri";
                     const folderId = await getOrCreateFolder(resp.access_token, projectName);
-                    els.loadingText.innerText = "Yükleniyor...";
+                    els.loadingText.innerText = "Dosya yükleniyor...";
                     const filename = `SOP_${els.sopTitleInput.value || 'Dokuman'}.pdf`;
                     const metadata = { name: filename, mimeType: 'application/pdf', parents: [folderId] };
                     const boundary = '-------314159265358979323846';
@@ -474,7 +477,7 @@
             window.images.forEach(img => { if(img) totalH += (img.height * (1120/img.width)) + 100; });
             totalH += window.points.filter(p => !p.isSilent).length * 100 + 400;
             canv.width = width; canv.height = Math.max(totalH, 1200);
-            ex.fillStyle = 'white'; ex.fillRect(0, 0, width, canv.height);
+            ex.shadowBlur = 0; ex.fillStyle = 'white'; ex.fillRect(0, 0, width, canv.height);
             if (window.companyLogo) { const s = Math.min(120/window.companyLogo.width, 120/window.companyLogo.height); ex.drawImage(window.companyLogo, 60, 50, window.companyLogo.width*s, window.companyLogo.height*s); }
             ex.fillStyle = '#000080'; ex.font = 'bold 44px Arial'; ex.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP DOKÜMANI', 200, 95);
             ex.fillStyle = '#64748b'; ex.font = '24px Arial'; ex.fillText(els.sopSubtitleInput.value || '', 200, 140);
