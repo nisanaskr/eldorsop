@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+                <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -64,7 +65,7 @@
     <div id="customModal" class="fixed inset-0 bg-black/60 z-[9000] hidden items-center justify-center p-4 backdrop-blur-md">
         <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center">
             <h3 id="modalTitle" class="text-2xl font-bold mb-3 text-slate-900">Bilgi</h3>
-            <p id="modalMessage" class="text-slate-500 mb-6 leading-relaxed"></p>
+            <p id="modalMessage" class="text-slate-500 mb-8 leading-relaxed"></p>
             <div id="qrSection" class="hidden mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                 <div id="qrContainer" class="flex justify-center mb-1"></div>
                 <p id="qrTitleText" class="font-bold text-[#000080] text-xs w-[160px] mx-auto text-center mb-4 uppercase tracking-tighter"></p>
@@ -280,26 +281,54 @@
             els.customModal.classList.remove('flex');
         };
 
-        // QR Kod İndirme
+        // QR Kod İndirme (Metin Dahil Revize Edildi)
         els.downloadQrBtn.onclick = () => {
-            const canvas = els.qrContainer.querySelector('canvas');
-            const img = els.qrContainer.querySelector('img');
-            let dataUrl = "";
+            const qrSource = els.qrContainer.querySelector('canvas') || els.qrContainer.querySelector('img');
+            if (!qrSource) return;
 
-            if (canvas) {
-                dataUrl = canvas.toDataURL("image/png");
-            } else if (img && img.src) {
-                dataUrl = img.src;
+            const sopTitle = (els.sopTitleInput.value || "SOP DOKÜMANI").toUpperCase();
+            
+            // İndirme için yeni bir birleştirici canvas oluştur
+            const dlCanvas = document.createElement('canvas');
+            const dctx = dlCanvas.getContext('2d');
+            
+            const qrWidth = 160;
+            const padding = 20; // Yan boşluklar
+            const textPaddingTop = 10;
+            const fontSize = 14;
+            
+            dlCanvas.width = qrWidth + (padding * 2);
+            dlCanvas.height = qrWidth + (padding * 2) + fontSize + textPaddingTop;
+            
+            // Arka planı beyaz yap (PNG şeffaf kalmasın)
+            dctx.fillStyle = 'white';
+            dctx.fillRect(0, 0, dlCanvas.width, dlCanvas.height);
+            
+            // QR Kodu çiz
+            dctx.drawImage(qrSource, padding, padding, qrWidth, qrWidth);
+            
+            // Yazı stilini ayarla
+            dctx.fillStyle = '#000080';
+            dctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
+            dctx.textAlign = 'center';
+            
+            // Yazıyı sığdırmak için font küçültme kontrolü
+            let currentFontSize = fontSize;
+            while (dctx.measureText(sopTitle).width > qrWidth && currentFontSize > 8) {
+                currentFontSize--;
+                dctx.font = `bold ${currentFontSize}px Inter, Arial, sans-serif`;
             }
+            
+            // Yazıyı QR kodun tam altına, sağ ve sol sınıra hizalı (merkezli) şekilde çiz
+            dctx.fillText(sopTitle, dlCanvas.width / 2, padding + qrWidth + textPaddingTop + (currentFontSize/2));
 
-            if (dataUrl) {
-                const a = document.createElement('a');
-                a.href = dataUrl;
-                a.download = `${(els.sopTitleInput.value || "SOP")}_QR.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+            // İndirme işlemini tetikle
+            const a = document.createElement('a');
+            a.href = dlCanvas.toDataURL("image/png");
+            a.download = `${(els.sopTitleInput.value || "SOP")}_QR.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         };
 
         // Görsel İşlemleri
