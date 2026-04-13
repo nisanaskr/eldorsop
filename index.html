@@ -64,9 +64,10 @@
     <div id="customModal" class="fixed inset-0 bg-black/60 z-[9000] hidden items-center justify-center p-4 backdrop-blur-md">
         <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center">
             <h3 id="modalTitle" class="text-2xl font-bold mb-3 text-slate-900">Bilgi</h3>
-            <p id="modalMessage" class="text-slate-500 mb-8 leading-relaxed"></p>
+            <p id="modalMessage" class="text-slate-500 mb-6 leading-relaxed"></p>
             <div id="qrSection" class="hidden mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <div id="qrContainer" class="flex justify-center mb-4"></div>
+                <div id="qrContainer" class="flex justify-center mb-1"></div>
+                <p id="qrTitleText" class="font-bold text-[#000080] text-xs w-[160px] mx-auto text-center mb-4 uppercase tracking-tighter"></p>
                 <p class="text-[10px] text-slate-400 mb-4 break-all bg-white p-2 rounded border" id="qrLinkText"></p>
                 <button id="downloadQrBtn" class="w-full py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i> QR Kodunu İndir
@@ -228,6 +229,7 @@
             modalMessage: document.getElementById('modalMessage'),
             qrSection: document.getElementById('qrSection'),
             qrContainer: document.getElementById('qrContainer'),
+            qrTitleText: document.getElementById('qrTitleText'),
             qrLinkText: document.getElementById('qrLinkText'),
             exportPdfBtn: document.getElementById('exportPdfBtn'),
             exportDriveBtn: document.getElementById('exportDriveBtn'),
@@ -258,15 +260,16 @@
             els.qrSection.classList.toggle('hidden', !qr);
             if (qr) {
                 els.qrContainer.innerHTML = '';
-                // QRCode kütüphanesini her zaman canvas üretecek şekilde kullanıyoruz
                 new QRCode(els.qrContainer, { 
                     text: qr, 
                     width: 160, 
                     height: 160, 
                     colorDark: "#000080",
-                    useSVG: false // Canvas kullanımını zorlamak için
+                    useSVG: false
                 });
                 els.qrLinkText.innerText = qr;
+                // QR Kodun altına SOP Başlığını ekle
+                els.qrTitleText.innerText = els.sopTitleInput.value || "SOP DOKÜMANI";
             }
             els.customModal.classList.remove('hidden');
             els.customModal.classList.add('flex');
@@ -277,7 +280,7 @@
             els.customModal.classList.remove('flex');
         };
 
-        // QR Kod İndirme Fix
+        // QR Kod İndirme
         els.downloadQrBtn.onclick = () => {
             const canvas = els.qrContainer.querySelector('canvas');
             const img = els.qrContainer.querySelector('img');
@@ -383,7 +386,7 @@
             lucide.createIcons();
         }
 
-        // --- PDF OLUŞTURMA MANTIĞI (GÜNCELLENDİ) ---
+        // --- PDF OLUŞTURMA MANTIĞI ---
         async function createPdfBlob() {
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
             const pageWidth = 210;
@@ -471,7 +474,7 @@
                     currentY += drawHeight + 30;
                 }
 
-                // 3. Talimatlar Bölümü (GÖRSEL OLARAK GÜNCELLENDİ)
+                // 3. Talimatlar Bölümü
                 ex.fillStyle = '#f1f5f9';
                 ex.fillRect(60, currentY, 1120, 50);
                 ex.fillStyle = '#000080';
@@ -527,7 +530,6 @@
                         }
                         ex.fillText(line, textX, startY);
                         
-                        // Adım sonrası boşluk (İç içe geçmemesi için dinamik)
                         currentY = startY + 60;
                     }
                 });
