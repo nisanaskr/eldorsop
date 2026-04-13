@@ -94,7 +94,7 @@
             <!-- Titles -->
             <div class="flex-grow flex flex-col gap-4 w-full">
                 <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-2xl py-1 transition-colors text-[#000080]" placeholder="SOP TITLE">
-                <input type="text" id="sopSubtitleInput" class="w-full text-base border-b-2 border-slate-50 focus:border-slate-300 focus:outline-none py-1 transition-colors text-slate-500 font-medium" placeholder="PROJECT NAME">
+                <input type="text" id="sopSubtitleInput" class="w-full text-base border-b-2 border-slate-300 focus:border-slate-500 focus:outline-none py-1 transition-colors text-slate-500 font-medium" placeholder="PROJECT NAME">
             </div>
 
             <!-- Action Buttons -->
@@ -280,16 +280,14 @@
             els.customModal.classList.remove('flex');
         };
 
-        // QR Code Download Fix
+        // QR Code Download
         els.downloadQrBtn.onclick = () => {
             const qrSource = els.qrContainer.querySelector('canvas') || els.qrContainer.querySelector('img');
             if (!qrSource) return;
 
             const sopTitle = (els.sopTitleInput.value || "SOP DOCUMENT").toUpperCase();
-            
             const dlCanvas = document.createElement('canvas');
             const dctx = dlCanvas.getContext('2d');
-            
             const qrWidth = 160;
             const padding = 20; 
             const textPaddingTop = 10;
@@ -310,7 +308,6 @@
                 currentFontSize--;
                 dctx.font = `bold ${currentFontSize}px Inter, Arial, sans-serif`;
             }
-            
             dctx.fillText(sopTitle, dlCanvas.width / 2, padding + qrWidth + textPaddingTop + (currentFontSize/2));
 
             const a = document.createElement('a');
@@ -405,7 +402,7 @@
             lucide.createIcons();
         }
 
-        // PDF Generation logic with English Labels
+        // PDF Generation
         async function createPdfBlob() {
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
             const pageWidth = 210;
@@ -487,7 +484,7 @@
                     currentY += drawHeight + 30;
                 }
 
-                // 3. Instruction Steps Title
+                // 3. Instruction Steps
                 ex.fillStyle = '#f1f5f9';
                 ex.fillRect(60, currentY, 1120, 50);
                 ex.fillStyle = '#000080';
@@ -540,7 +537,7 @@
                     }
                 });
 
-                // 4. Critical Warnings
+                // 4. Critical Warnings (REVİZE: WORD WRAP EKLENDİ)
                 if (window.warnings.length > 0) {
                     currentY += 20;
                     ex.fillStyle = '#fef2f2';
@@ -554,11 +551,30 @@
                     ex.font = '24px Arial';
                     ex.textAlign = 'left';
                     ex.textBaseline = 'top';
+                    
                     window.warnings.forEach(w => {
                         ex.fillStyle = '#dc2626';
                         ex.fillText('•', 80, currentY);
                         ex.fillStyle = '#334155';
-                        ex.fillText(w.text, 110, currentY);
+                        
+                        // Uyarı metni kaydırma mantığı
+                        const warningText = w.text || "";
+                        const words = warningText.split(' ');
+                        let line = '';
+                        const textX = 110;
+                        const maxWidth = 1000;
+
+                        for (let n = 0; n < words.length; n++) {
+                            let testLine = line + words[n] + ' ';
+                            if (ex.measureText(testLine).width > maxWidth && n > 0) {
+                                ex.fillText(line, textX, currentY);
+                                line = words[n] + ' ';
+                                currentY += 35;
+                            } else {
+                                line = testLine;
+                            }
+                        }
+                        ex.fillText(line, textX, currentY);
                         currentY += 40;
                     });
                 }
@@ -584,34 +600,35 @@
             }
         };
 
-        els.exportDriveBtn.onclick = async () => { 
-            const blob = await createPdfBlob(); 
-            uploadToGoogleDrive(blob); 
-        };
+        els.exportDriveBtn.onclick = async () => { const blob = await createPdfBlob(); uploadToGoogleDrive(blob); };
 
         els.resetBtn.onclick = () => { 
             if(confirm("Images, instructions, and warnings will be cleared. Do you want to continue?")) { 
-                window.points = []; 
-                window.images = [null, null];
-                window.warnings = [];
-                renderAll(); 
-                renderWarnings();
+                window.points = []; window.images = [null, null]; window.warnings = [];
+                renderAll(); renderWarnings();
             } 
         };
 
-        els.addManualBtn.onclick = () => { 
-            window.points.push({ px: null, py: null, description: '', isSilent: false, imgIdx: -1, isManual: true }); 
-            renderAll(); 
-        };
-
+        els.addManualBtn.onclick = () => { window.points.push({ px: null, py: null, description: '', isSilent: false, imgIdx: -1, isManual: true }); renderAll(); };
         els.addWarningBtn.onclick = () => { window.warnings.push({ text: '' }); renderWarnings(); };
 
         function renderWarnings() {
             els.warningsContainer.innerHTML = '';
             window.warnings.forEach((w, i) => {
-                const d = document.createElement('div'); d.className = "flex gap-2 bg-red-50 p-2 rounded border border-red-100 items-center";
-                d.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-500 shrink-0"></i><input type="text" class="flex-grow bg-transparent text-sm outline-none text-red-700 placeholder-red-300" value="${w.text}" placeholder="Enter critical warning here..." oninput="window.warnings[${i}].text=this.value"><button onclick="window.warnings.splice(${i}, 1); renderWarnings();" class="text-red-300 hover:text-red-500 font-bold">&times;</button>`;
+                const d = document.createElement('div'); d.className = "flex gap-2 bg-red-50 p-2 rounded border border-red-100 items-start";
+                // Textarea ile alt satıra geçme desteği ve daha geniş görünüm
+                d.innerHTML = `
+                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-500 shrink-0 mt-1"></i>
+                    <textarea class="flex-grow bg-transparent text-sm outline-none text-red-700 placeholder-red-300 resize-none overflow-hidden" 
+                        placeholder="Enter critical warning here..." 
+                        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';window.warnings[${i}].text=this.value"
+                        style="height: 24px;">${w.text}</textarea>
+                    <button onclick="window.warnings.splice(${i}, 1); renderWarnings();" class="text-red-300 hover:text-red-500 font-bold mt-1">&times;</button>`;
                 els.warningsContainer.appendChild(d);
+                // Başlangıç yüksekliğini ayarla
+                const ta = d.querySelector('textarea');
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
             });
             lucide.createIcons();
         }
