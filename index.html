@@ -400,14 +400,14 @@
 
                 currentY += 40;
 
-                // 2. Görseller (Küçültülmüş ve Ortalanmış)
+                // 2. Görseller (Daha da Küçültülmüş ve Ortalanmış)
                 for (let i = 0; i < 2; i++) {
                     const img = window.images[i];
                     if (!img) continue;
 
-                    const drawWidth = 980; // Genişlik 1120'den 980'e düşürüldü
+                    const drawWidth = 780; // 980 -> 780'e düşürüldü (daha fazla alan için)
                     const drawHeight = (img.height * drawWidth) / img.width;
-                    const drawX = (1240 - drawWidth) / 2; // Yatayda tam ortalama
+                    const drawX = (1240 - drawWidth) / 2;
 
                     ex.strokeStyle = '#e2e8f0';
                     ex.lineWidth = 2;
@@ -438,7 +438,7 @@
                         }
                     });
 
-                    currentY += drawHeight + 40;
+                    currentY += drawHeight + 30; // Boşluk biraz azaltıldı
                 }
 
                 // 3. Talimatlar Bölümü
@@ -479,13 +479,13 @@
                             }
                         }
                         ex.fillText(line, x, currentY);
-                        currentY += 45;
+                        currentY += 40;
                     }
                 });
 
                 // 4. Kritik Uyarılar
                 if (window.warnings.length > 0) {
-                    currentY += 20;
+                    currentY += 15;
                     ex.fillStyle = '#fef2f2';
                     ex.fillRect(60, currentY, 1120, 50);
                     ex.fillStyle = '#dc2626';
