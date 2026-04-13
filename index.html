@@ -97,7 +97,8 @@
             <h3 id="modalTitle" class="text-2xl font-bold mb-3">Information</h3>
             <p id="modalMessage" class="text-slate-500 mb-8"></p>
             <div id="qrSection" class="hidden mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <div id="qrContainer" class="flex justify-center mb-4"></div>
+                <div id="qrContainer" class="flex justify-center mb-1"></div>
+                <p id="qrTitleText" class="font-bold text-[#000080] text-xs w-[160px] mx-auto text-center mb-4 uppercase tracking-tighter"></p>
                 <p id="qrLinkText" class="text-[10px] text-slate-400 mb-4 break-all bg-white p-2 rounded border"></p>
                 <button id="downloadQrBtn" class="w-full py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i> Download QR Code
@@ -270,8 +271,10 @@
             qrSection: document.getElementById('qrSection'),
             qrContainer: document.getElementById('qrContainer'),
             qrLinkText: document.getElementById('qrLinkText'),
+            qrTitleText: document.getElementById('qrTitleText'),
             exportPdfBtn: document.getElementById('exportPdfBtn'),
             exportDriveBtn: document.getElementById('exportDriveBtn'),
+            downloadQrBtn: document.getElementById('downloadQrBtn'),
             resetBtn: document.getElementById('resetBtn'),
             addManualBtn: document.getElementById('addManualBtn'),
             addWarningBtn: document.getElementById('addWarningBtn'),
@@ -611,21 +614,62 @@
             uploadToDrive(blob);
         };
 
+        // QR Code Download Logic
+        els.downloadQrBtn.onclick = () => {
+            const qrSource = els.qrContainer.querySelector('canvas');
+            if (!qrSource) return;
+            const sopTitle = (els.sopTitleInput.value || "SOP DOCUMENT").toUpperCase();
+            const dlCanvas = document.createElement('canvas');
+            const dctx = dlCanvas.getContext('2d');
+            const qrWidth = 160;
+            const padding = 20; 
+            const textPaddingTop = 10;
+            const fontSize = 14;
+            dlCanvas.width = qrWidth + (padding * 2);
+            dlCanvas.height = qrWidth + (padding * 2) + fontSize + textPaddingTop;
+            dctx.fillStyle = 'white';
+            dctx.fillRect(0, 0, dlCanvas.width, dlCanvas.height);
+            dctx.drawImage(qrSource, padding, padding, qrWidth, qrWidth);
+            dctx.fillStyle = '#000080';
+            dctx.font = `bold ${fontSize}px Inter, Arial, sans-serif`;
+            dctx.textAlign = 'center';
+            let currentFontSize = fontSize;
+            while (dctx.measureText(sopTitle).width > qrWidth && currentFontSize > 8) {
+                currentFontSize--;
+                dctx.font = `bold ${currentFontSize}px Inter, Arial, sans-serif`;
+            }
+            dctx.fillText(sopTitle, dlCanvas.width / 2, padding + qrWidth + textPaddingTop + (currentFontSize/2));
+            const a = document.createElement('a');
+            a.href = dlCanvas.toDataURL("image/png");
+            a.download = `${(els.sopTitleInput.value || "SOP")}_QR.png`;
+            a.click();
+        };
+
         async function uploadToDrive(blob) {
             els.loading.classList.remove('hidden');
             const tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: GOOGLE_CLIENT_ID, scope: 'https://www.googleapis.com/auth/drive.file',
                 callback: async (resp) => {
                     const metadata = { name: `SOP_${els.sopTitleInput.value || 'Doc'}.pdf`, mimeType: 'application/pdf' };
-                    const form = new FormData();
-                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                    form.append('file', blob);
-                    const upload = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-                        method: 'POST', headers: { 'Authorization': 'Bearer ' + resp.access_token }, body: form
-                    });
-                    const result = await upload.json();
-                    els.loading.classList.add('hidden');
-                    if(result.webViewLink) showModal("Uploaded!", "File has been sent to Google Drive.", result.webViewLink);
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                        const b64Data = btoa(new Uint8Array(reader.result).reduce((acc, byte) => acc + String.fromCharCode(byte), ''));
+                        const boundary = '-------314159265358979323846';
+                        const delimiter = "\r\n--" + boundary + "\r\n";
+                        const close_delim = "\r\n--" + boundary + "--";
+                        const multipartBody = delimiter + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + delimiter + 'Content-Type: application/pdf\r\nContent-Transfer-Encoding: base64\r\n\r\n' + b64Data + close_delim;
+
+                        const upload = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + resp.access_token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+                            body: multipartBody
+                        });
+                        const result = await upload.json();
+                        els.loading.classList.add('hidden');
+                        if(result.webViewLink) showModal("Uploaded!", "File has been sent to Google Drive.", result.webViewLink);
+                        else showModal("Error", "Drive upload failed. Please try again.");
+                    };
+                    reader.readAsArrayBuffer(blob);
                 }
             });
             tokenClient.requestAccessToken({ prompt: '' });
@@ -634,7 +678,12 @@
         function showModal(title, msg, qr = null) {
             els.modalTitle.innerText = title; els.modalMessage.innerText = msg;
             els.qrSection.classList.toggle('hidden', !qr);
-            if (qr) { els.qrContainer.innerHTML = ''; new QRCode(els.qrContainer, { text: qr, width: 160, height: 160 }); els.qrLinkText.innerText = qr; }
+            if (qr) { 
+                els.qrContainer.innerHTML = ''; 
+                new QRCode(els.qrContainer, { text: qr, width: 160, height: 160, colorDark: "#000080" }); 
+                els.qrLinkText.innerText = qr; 
+                els.qrTitleText.innerText = els.sopTitleInput.value || "SOP DOCUMENT";
+            }
             els.customModal.classList.remove('hidden'); els.customModal.classList.add('flex');
         }
 
