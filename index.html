@@ -149,7 +149,7 @@
 
             <!-- Sağ: Bilgi Girişi -->
             <div class="space-y-6">
-                <!-- Talimat Listesi - YÜKSEKLİK KISALTILDI (380px -> 260px) -->
+                <!-- Talimat Listesi -->
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[260px]">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="font-bold text-[#000080] text-sm uppercase tracking-wider flex items-center gap-2">
@@ -169,7 +169,7 @@
                     </div>
                 </div>
 
-                <!-- Uyarılar - Artık sayfa açılınca daha net görünüyor -->
+                <!-- Uyarılar -->
                 <div class="bg-white p-6 rounded-2xl border border-red-50 shadow-sm">
                     <h2 class="font-bold text-red-600 text-sm uppercase tracking-wider mb-5 flex items-center gap-2">
                         <i data-lucide="alert-triangle" class="w-4 h-4"></i> KRİTİK UYARILAR
@@ -258,15 +258,45 @@
             els.qrSection.classList.toggle('hidden', !qr);
             if (qr) {
                 els.qrContainer.innerHTML = '';
-                new QRCode(els.qrContainer, { text: qr, width: 160, height: 160, colorDark: "#000080" });
+                // QRCode kütüphanesini her zaman canvas üretecek şekilde kullanıyoruz
+                new QRCode(els.qrContainer, { 
+                    text: qr, 
+                    width: 160, 
+                    height: 160, 
+                    colorDark: "#000080",
+                    useSVG: false // Canvas kullanımını zorlamak için
+                });
                 els.qrLinkText.innerText = qr;
             }
             els.customModal.classList.remove('hidden');
             els.customModal.classList.add('flex');
         }
+
         document.getElementById('modalClose').onclick = () => {
             els.customModal.classList.add('hidden');
             els.customModal.classList.remove('flex');
+        };
+
+        // QR Kod İndirme Fix
+        els.downloadQrBtn.onclick = () => {
+            const canvas = els.qrContainer.querySelector('canvas');
+            const img = els.qrContainer.querySelector('img');
+            let dataUrl = "";
+
+            if (canvas) {
+                dataUrl = canvas.toDataURL("image/png");
+            } else if (img && img.src) {
+                dataUrl = img.src;
+            }
+
+            if (dataUrl) {
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `${(els.sopTitleInput.value || "SOP")}_QR.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
         };
 
         // Görsel İşlemleri
@@ -353,7 +383,7 @@
             lucide.createIcons();
         }
 
-        // --- PDF OLUŞTURMA MANTIĞI ---
+        // --- PDF OLUŞTURMA MANTIĞI (GÜNCELLENDİ) ---
         async function createPdfBlob() {
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
             const pageWidth = 210;
@@ -400,12 +430,12 @@
 
                 currentY += 40;
 
-                // 2. Görseller (REVİZE: DAHA DA KÜÇÜK - 600px)
+                // 2. Görseller (Küçük ve Ortalanmış)
                 for (let i = 0; i < 2; i++) {
                     const img = window.images[i];
                     if (!img) continue;
 
-                    const drawWidth = 600; // Bir miktar daha küçültüldü
+                    const drawWidth = 600; 
                     const drawHeight = (img.height * drawWidth) / img.width;
                     const drawX = (1240 - drawWidth) / 2;
 
@@ -441,8 +471,8 @@
                     currentY += drawHeight + 30;
                 }
 
-                // 3. Talimatlar Bölümü
-                ex.fillStyle = '#f8fafc';
+                // 3. Talimatlar Bölümü (GÖRSEL OLARAK GÜNCELLENDİ)
+                ex.fillStyle = '#f1f5f9';
                 ex.fillRect(60, currentY, 1120, 50);
                 ex.fillStyle = '#000080';
                 ex.font = 'bold 30px Arial';
@@ -450,53 +480,78 @@
                 ex.textBaseline = 'middle';
                 ex.fillText('TALİMAT ADIMLARI', 80, currentY + 25);
                 
-                currentY += 70;
+                currentY += 80;
                 
-                ex.fillStyle = '#334155';
-                ex.font = '24px Arial';
-                ex.textBaseline = 'top';
-
                 let ic_list = 0;
                 window.points.forEach(p => {
                     if (!p.isSilent) {
                         ic_list++;
-                        const text = `${ic_list}. ${p.description || "Açıklama girilmedi"}`;
                         
-                        const words = text.split(' ');
+                        // Adım Numarası Çemberi
+                        const circleX = 85;
+                        const circleY = currentY + 15;
+                        ex.beginPath();
+                        ex.arc(circleX, circleY, 20, 0, Math.PI * 2);
+                        ex.fillStyle = '#000080';
+                        ex.fill();
+                        
+                        ex.fillStyle = 'white';
+                        ex.font = 'bold 22px Arial';
+                        ex.textAlign = 'center';
+                        ex.textBaseline = 'middle';
+                        ex.fillText(ic_list, circleX, circleY);
+
+                        // Metin
+                        ex.fillStyle = '#334155';
+                        ex.font = 'bold 24px Arial';
+                        ex.textAlign = 'left';
+                        ex.textBaseline = 'top';
+
+                        const description = p.description || "Açıklama girilmedi";
+                        const words = description.split(' ');
                         let line = '';
-                        const maxWidth = 1000;
-                        const x = 80;
+                        const maxWidth = 980;
+                        const textX = 130;
+                        let startY = currentY;
 
                         for (let n = 0; n < words.length; n++) {
                             let testLine = line + words[n] + ' ';
                             let metrics = ex.measureText(testLine);
                             if (metrics.width > maxWidth && n > 0) {
-                                ex.fillText(line, x, currentY);
+                                ex.fillText(line, textX, startY);
                                 line = words[n] + ' ';
-                                currentY += 35;
+                                startY += 35;
                             } else {
                                 line = testLine;
                             }
                         }
-                        ex.fillText(line, x, currentY);
-                        currentY += 40;
+                        ex.fillText(line, textX, startY);
+                        
+                        // Adım sonrası boşluk (İç içe geçmemesi için dinamik)
+                        currentY = startY + 60;
                     }
                 });
 
                 // 4. Kritik Uyarılar
                 if (window.warnings.length > 0) {
-                    currentY += 15;
+                    currentY += 20;
                     ex.fillStyle = '#fef2f2';
                     ex.fillRect(60, currentY, 1120, 50);
                     ex.fillStyle = '#dc2626';
                     ex.font = 'bold 30px Arial';
+                    ex.textBaseline = 'middle';
                     ex.fillText('KRİTİK UYARILAR', 80, currentY + 25);
                     
                     currentY += 70;
                     ex.font = '24px Arial';
+                    ex.textAlign = 'left';
+                    ex.textBaseline = 'top';
                     window.warnings.forEach(w => {
-                        ex.fillText('• ' + w.text, 80, currentY);
-                        currentY += 35;
+                        ex.fillStyle = '#dc2626';
+                        ex.fillText('•', 80, currentY);
+                        ex.fillStyle = '#334155';
+                        ex.fillText(w.text, 110, currentY);
+                        currentY += 40;
                     });
                 }
             };
