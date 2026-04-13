@@ -92,8 +92,8 @@
 
             <!-- Başlıklar -->
             <div class="flex-grow flex flex-col gap-4 w-full">
-                <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-2xl py-1 transition-colors text-[#000080]" placeholder="SOP BAŞLIĞI (ÖRN: SHAFT BLISTER POSITION)">
-                <input type="text" id="sopSubtitleInput" class="w-full text-base border-b-2 border-slate-50 focus:border-slate-300 focus:outline-none py-1 transition-colors text-slate-500 font-medium" placeholder="PROJE ADI (ÖRN: TESLA NV93 INLET CONTACTOR)">
+                <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-2xl py-1 transition-colors text-[#000080]" placeholder="SOP BAŞLIĞI">
+                <input type="text" id="sopSubtitleInput" class="w-full text-base border-b-2 border-slate-50 focus:border-slate-300 focus:outline-none py-1 transition-colors text-slate-500 font-medium" placeholder="PROJE ADI">
             </div>
 
             <!-- Butonlar -->
@@ -353,14 +353,13 @@
             lucide.createIcons();
         }
 
-        // --- PDF OLUŞTURMA MANTIĞI (GÜNCELLENDİ) ---
+        // --- PDF OLUŞTURMA MANTIĞI ---
         async function createPdfBlob() {
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
             const pageWidth = 210;
             const pageHeight = 297;
             const margin = 15;
             
-            // Yüksek çözünürlüklü canvas (A4 @ 150 DPI ≈ 1240x1754)
             const exportCanvas = document.createElement('canvas');
             const ex = exportCanvas.getContext('2d');
             exportCanvas.width = 1240;
@@ -373,7 +372,7 @@
                 ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
                 currentY = 60;
 
-                // 1. Header (Referans görsele göre Eldor Logosu ve Başlık)
+                // 1. Header
                 if (window.companyLogo) {
                     const logoRatio = window.companyLogo.width / window.companyLogo.height;
                     const logoHeight = 80;
@@ -381,20 +380,17 @@
                     ex.drawImage(window.companyLogo, 60, currentY, logoWidth, logoHeight);
                 }
 
-                // Mavi Başlık (Referans görseldeki SHAFT BLISTER POSITION stili)
                 ex.fillStyle = '#000080';
                 ex.font = 'bold 44px Arial';
                 ex.textAlign = 'left';
                 ex.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP DOKÜMANI', 300, currentY + 45);
 
-                // Gri Altbaşlık
                 ex.fillStyle = '#64748b';
                 ex.font = '500 28px Arial';
                 ex.fillText(els.sopSubtitleInput.value || '', 300, currentY + 85);
 
                 currentY += 130;
 
-                // Bölücü Çizgi
                 ex.strokeStyle = '#000080';
                 ex.lineWidth = 3;
                 ex.beginPath();
@@ -404,26 +400,26 @@
 
                 currentY += 40;
 
-                // 2. Görseller
+                // 2. Görseller (Küçültülmüş ve Ortalanmış)
                 for (let i = 0; i < 2; i++) {
                     const img = window.images[i];
                     if (!img) continue;
 
-                    const drawWidth = 1120;
+                    const drawWidth = 980; // Genişlik 1120'den 980'e düşürüldü
                     const drawHeight = (img.height * drawWidth) / img.width;
+                    const drawX = (1240 - drawWidth) / 2; // Yatayda tam ortalama
 
-                    // Çerçeve
                     ex.strokeStyle = '#e2e8f0';
                     ex.lineWidth = 2;
-                    ex.strokeRect(60, currentY, drawWidth, drawHeight);
-                    ex.drawImage(img, 60, currentY, drawWidth, drawHeight);
+                    ex.strokeRect(drawX, currentY, drawWidth, drawHeight);
+                    ex.drawImage(img, drawX, currentY, drawWidth, drawHeight);
 
                     // Markerlar
                     let ic = 0, mc = 0;
                     window.points.forEach(p => {
                         if (!p.isSilent) ic++; else mc++;
                         if (p.imgIdx === i && !p.isManual) {
-                            const mx = 60 + (p.px / 100) * drawWidth;
+                            const mx = drawX + (p.px / 100) * drawWidth;
                             const my = currentY + (p.py / 100) * drawHeight;
 
                             ex.beginPath();
@@ -466,7 +462,6 @@
                         ic_list++;
                         const text = `${ic_list}. ${p.description || "Açıklama girilmedi"}`;
                         
-                        // Text wrapping
                         const words = text.split(' ');
                         let line = '';
                         const maxWidth = 1000;
@@ -507,13 +502,10 @@
             };
 
             renderPageContent();
-            
-            // Sayfa içeriğini PDF'e aktar (JPEG formatında kaliteyi yüksek tutarak)
             pdf.addImage(exportCanvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, pageWidth, pageHeight);
             return pdf.output('blob');
         }
 
-        // Export Butonları
         els.exportPdfBtn.onclick = async () => { 
             els.loading.classList.remove('hidden'); 
             try {
@@ -533,7 +525,6 @@
             uploadToGoogleDrive(blob); 
         };
 
-        // Diğer Fonksiyonlar
         els.resetBtn.onclick = () => { 
             if(confirm("Görseller, talimatlar ve uyarılar temizlenecek. Devam edilsin mi?")) { 
                 window.points = []; 
@@ -561,7 +552,6 @@
             lucide.createIcons();
         }
 
-        // Drive upload işlemleri (Önceki kod ile aynı)
         async function uploadToGoogleDrive(blob) {
             const savedToken = getSavedToken();
             if (savedToken) { executeUpload(savedToken, blob); return; }
