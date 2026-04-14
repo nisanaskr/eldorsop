@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eldor SOP Creator - v2</title>
+    <title>Eldor SOP Creator - QR & Drive Integrated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -16,113 +16,135 @@
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .canvas-container { position: relative; display: inline-block; cursor: crosshair; width: 100%; background: #eee; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; user-select: none; }
         canvas { display: block; max-width: 100%; height: auto; }
+        
+        /* Marker Styles */
         .marker { position: absolute; width: 28px; height: 28px; background: rgba(239, 68, 68, 0.95); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; transform: translate(-50%, -50%); border: 2px solid white; pointer-events: auto; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 10; }
-        .info-marker { position: absolute; width: 20px; height: 20px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid white; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 9; }
-        .illu-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; z-index: 8; transition: transform 0.2s; }
-        .illu-marker:hover { transform: translate(-50%, -50%) scale(1.1); }
+        .info-marker { position: absolute; width: 22px; height: 22px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid white; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 9; }
+        .illu-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; z-index: 8; transition: transform 0.2s; white-space: nowrap; }
+        
         .tool-btn.active { background-color: #000080; color: white; border-color: #000080; }
         .tab-btn.active { border-bottom: 3px solid #000080; color: #000080; font-weight: 700; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         #loginScreen { background: linear-gradient(135deg, #000080 0%, #000044 100%); }
-        .color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
+    <!-- Login Screen -->
     <div id="loginScreen" class="fixed inset-0 z-[8000] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl p-10 shadow-2xl space-y-8">
             <div class="text-center space-y-3">
-                <div class="w-20 h-20 bg-blue-50 rounded-2xl mx-auto flex items-center justify-center mb-4"><i data-lucide="lock" class="w-10 h-10 text-[#000080]"></i></div>
+                <div class="w-20 h-20 bg-blue-50 rounded-2xl mx-auto flex items-center justify-center mb-4">
+                    <i data-lucide="lock" class="w-10 h-10 text-[#000080]"></i>
+                </div>
                 <h2 class="text-3xl font-bold text-slate-900">Eldor SOP Panel</h2>
-                <p class="text-slate-500">Sign in with your administrator credentials.</p>
+                <p class="text-slate-500">Sign in with administrator credentials.</p>
             </div>
             <form id="loginForm" class="space-y-5">
-                <input type="text" id="usernameInput" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="Username">
-                <input type="password" id="passwordInput" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl" placeholder="Password">
-                <div id="loginError" class="hidden text-red-500 text-sm font-medium text-center py-2 bg-red-50 rounded-lg">Invalid credentials!</div>
+                <input type="text" id="usernameInput" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Username">
+                <input type="password" id="passwordInput" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Password">
+                <div id="loginError" class="hidden text-red-500 text-sm font-medium text-center bg-red-50 py-2 rounded-lg">Invalid username or password!</div>
                 <button type="submit" class="w-full py-4 bg-[#000080] text-white rounded-xl font-bold shadow-xl active:scale-95 transition-all">Login</button>
             </form>
         </div>
     </div>
 
+    <!-- Loading -->
     <div id="loading" class="loading-overlay hidden">
         <div class="w-14 h-14 border-4 border-[#000080] border-t-transparent rounded-full animate-spin mb-4"></div>
         <p class="font-bold text-[#000080]" id="loadingText">Processing...</p>
     </div>
 
+    <!-- Modal -->
     <div id="customModal" class="fixed inset-0 bg-black/60 z-[9000] hidden items-center justify-center p-4 backdrop-blur-md">
         <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center">
-            <h3 id="modalTitle" class="text-2xl font-bold mb-3"></h3>
+            <h3 id="modalTitle" class="text-2xl font-bold mb-3 text-slate-900"></h3>
             <p id="modalMessage" class="text-slate-500 mb-8"></p>
             <div id="qrSection" class="hidden mb-8 p-6 bg-slate-50 rounded-2xl border">
                 <div id="qrContainer" class="flex justify-center mb-1"></div>
                 <p id="qrTitleText" class="font-bold text-[#000080] text-xs uppercase mb-4"></p>
-                <p class="text-[10px] text-slate-400 break-all" id="qrLinkText"></p>
-                <button id="downloadQrBtn" class="w-full mt-4 py-3 bg-white border rounded-xl text-sm font-bold flex items-center justify-center gap-2"><i data-lucide="download" class="w-4 h-4"></i> Download QR</button>
+                <p class="text-[10px] text-slate-400 break-all p-2 bg-white rounded border" id="qrLinkText"></p>
+                <button id="downloadQrBtn" class="w-full mt-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Download QR Code
+                </button>
             </div>
-            <button id="modalClose" class="w-full py-4 bg-[#000080] text-white rounded-2xl font-bold">Close</button>
+            <button id="modalClose" class="w-full py-4 bg-[#000080] text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all">Close</button>
         </div>
     </div>
 
+    <!-- App Content -->
     <div class="max-w-6xl mx-auto space-y-6 blur-sm pointer-events-none transition-all duration-700" id="mainContent">
-        <div class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border">
-            <div onclick="document.getElementById('logoInput').click()" class="w-24 h-24 shrink-0 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer bg-slate-50 overflow-hidden">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div onclick="document.getElementById('logoInput').click()" class="w-24 h-24 shrink-0 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-[#000080] bg-slate-50 relative overflow-hidden">
                 <img id="logoPreview" class="hidden w-full h-full object-contain p-2">
-                <div id="logoPlaceholder" class="text-center"><i data-lucide="image" class="w-6 h-6 text-slate-300 mx-auto"></i><span class="text-[10px] font-bold text-slate-400">LOGO</span></div>
+                <div id="logoPlaceholder" class="flex flex-col items-center gap-1 text-slate-300">
+                    <i data-lucide="image" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-bold uppercase">Logo</span>
+                </div>
                 <input type="file" id="logoInput" class="hidden" accept="image/*">
             </div>
+
             <div class="flex-grow flex flex-col gap-4 w-full">
-                <input type="text" id="sopTitleInput" class="w-full border-b-2 font-bold text-2xl py-1 focus:outline-none text-[#000080]" placeholder="SOP TITLE">
-                <input type="text" id="sopSubtitleInput" class="w-full border-b-2 text-slate-500 py-1 focus:outline-none" placeholder="PROJECT NAME">
+                <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-2xl py-1 text-[#000080]" placeholder="SOP TITLE">
+                <input type="text" id="sopSubtitleInput" class="w-full border-b-2 border-slate-300 focus:border-slate-500 focus:outline-none py-1 text-slate-500 font-medium uppercase" placeholder="PROJECT NAME">
             </div>
+
             <div class="flex flex-col gap-3 items-end">
                 <div class="flex bg-[#000080] rounded-lg shadow-md overflow-hidden h-12">
-                    <button id="exportPdfBtn" class="px-6 text-white font-bold hover:bg-[#000066] border-r border-[#ffffff22] flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> PDF</button>
-                    <button id="exportDriveBtn" class="px-6 text-white font-bold hover:bg-[#000066] flex items-center gap-2"><i data-lucide="hard-drive" class="w-4 h-4 text-green-400"></i> Drive</button>
+                    <button id="exportPdfBtn" class="px-6 text-white font-bold hover:bg-[#000066] border-r border-[#ffffff22] flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> PDF
+                    </button>
+                    <button id="exportDriveBtn" class="px-6 text-white font-bold hover:bg-[#000066] flex items-center gap-2">
+                        <i data-lucide="hard-drive" class="w-4 h-4 text-green-400"></i> Drive
+                    </button>
                 </div>
-                <button id="resetBtn" class="text-xs text-red-500 font-bold hover:underline">Reset All</button>
+                <button id="resetBtn" class="text-xs text-red-500 font-bold hover:underline px-2">Reset Data</button>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Area -->
             <div class="lg:col-span-2 space-y-4">
-                <div class="bg-white rounded-2xl border p-6 shadow-sm">
-                    <div class="flex border-b mb-6 gap-6">
-                        <button id="tab0" class="tab-btn active px-6 py-3 text-sm font-bold">Image Area 1</button>
-                        <button id="tab1" class="tab-btn px-6 py-3 text-sm font-bold">Image Area 2</button>
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex border-b border-slate-100 mb-6 gap-6">
+                        <button id="tab0" class="tab-btn active px-6 py-3 text-sm font-bold transition-all">Image Area 1</button>
+                        <button id="tab1" class="tab-btn px-6 py-3 text-sm font-bold transition-all">Image Area 2</button>
                     </div>
                     
-                    <div id="uploadArea" onclick="document.getElementById('fileInput').click()" class="bg-slate-50 py-24 rounded-2xl border-2 border-dashed text-center cursor-pointer">
+                    <div id="uploadArea" onclick="document.getElementById('fileInput').click()" class="bg-slate-50 py-24 rounded-2xl border-2 border-dashed border-slate-200 text-center cursor-pointer hover:bg-slate-100 transition-all">
                         <i data-lucide="image-plus" class="w-10 h-10 text-blue-500 mx-auto mb-4"></i>
                         <p class="font-bold text-slate-600">Click to Upload Image</p>
                         <input type="file" id="fileInput" class="hidden" accept="image/*">
                     </div>
 
                     <div id="editorArea" class="hidden space-y-4">
-                        <div class="flex flex-wrap items-center justify-between bg-slate-50 p-3 rounded-xl border gap-3">
+                        <div class="flex flex-wrap items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 gap-3">
                             <div class="flex flex-wrap gap-2">
-                                <button id="toolInstruction" class="tool-btn active px-3 py-2 text-xs font-bold rounded-lg border flex items-center gap-2 bg-white">
-                                    <div class="color-dot bg-red-500"></div> Step (1,2..)
+                                <button id="toolInstruction" class="tool-btn active px-3 py-2 text-xs font-bold rounded-lg border bg-white flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div> Step (1,2..)
                                 </button>
-                                <div class="flex items-center bg-white border rounded-lg px-2 gap-1">
+                                <!-- Info Marker Color Selection -->
+                                <div class="flex items-center bg-white border border-slate-200 rounded-lg px-2 gap-1 h-9">
                                     <span class="text-[10px] font-bold text-slate-400 mr-1">INFO:</span>
-                                    <button onclick="setInfoMode('#3b82f6')" class="w-6 h-6 rounded-full bg-blue-500 border-2 border-white shadow-sm hover:scale-110 transition-all"></button>
-                                    <button onclick="setInfoMode('#22c55e')" class="w-6 h-6 rounded-full bg-green-500 border-2 border-white shadow-sm hover:scale-110 transition-all"></button>
-                                    <button onclick="setInfoMode('#eab308')" class="w-6 h-6 rounded-full bg-yellow-500 border-2 border-white shadow-sm hover:scale-110 transition-all"></button>
-                                    <button onclick="setInfoMode('#a855f7')" class="w-6 h-6 rounded-full bg-purple-500 border-2 border-white shadow-sm hover:scale-110 transition-all"></button>
+                                    <button onclick="setInfoMode('#3b82f6')" class="w-5 h-5 rounded-full bg-blue-500 border border-white hover:scale-110 transition-transform"></button>
+                                    <button onclick="setInfoMode('#22c55e')" class="w-5 h-5 rounded-full bg-green-500 border border-white hover:scale-110 transition-transform"></button>
+                                    <button onclick="setInfoMode('#eab308')" class="w-5 h-5 rounded-full bg-yellow-500 border border-white hover:scale-110 transition-transform"></button>
+                                    <button onclick="setInfoMode('#a855f7')" class="w-5 h-5 rounded-full bg-purple-500 border border-white hover:scale-110 transition-transform"></button>
                                 </div>
-                                <button id="toolArrow" class="tool-btn px-3 py-2 text-xs font-bold rounded-lg border flex items-center gap-2 bg-white">
-                                    <i data-lucide="move-up-right" class="w-3 h-3"></i> Draw Arrow
+                                <button id="toolArrow" class="tool-btn px-3 py-2 text-xs font-bold rounded-lg border bg-white flex items-center gap-2">
+                                    <i data-lucide="move-up-right" class="w-3 h-3"></i> Arrow
                                 </button>
-                                <button id="toolOperator" class="tool-btn px-3 py-2 text-xs font-bold rounded-lg border flex items-center gap-2 bg-white">
+                                <button id="toolOperator" class="tool-btn px-3 py-2 text-xs font-bold rounded-lg border bg-white flex items-center gap-2">
                                     <i data-lucide="user" class="w-3 h-3 text-orange-500"></i> Operator Side
                                 </button>
                             </div>
-                            <button onclick="clearCurrentImage()" class="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-1">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
+                            <button onclick="clearCurrentImage()" class="px-3 py-2 text-xs font-bold rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-1 transition-all">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove
                             </button>
                         </div>
-
                         <div class="canvas-container" id="canvasContainer">
                             <canvas id="mainCanvas"></canvas>
                             <div id="markersOverlay" class="absolute inset-0 pointer-events-none"></div>
@@ -131,13 +153,19 @@
                 </div>
             </div>
 
+            <!-- Right Area -->
             <div class="space-y-6">
-                <div class="bg-white p-6 rounded-2xl border shadow-sm flex flex-col h-[350px]">
+                <!-- Instructions -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[320px]">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="font-bold text-[#000080] text-sm uppercase">Instruction Steps</h2>
-                        <button id="addManualBtn" class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-bold">+ Manual</button>
+                        <h2 class="font-bold text-[#000080] text-sm uppercase tracking-wider flex items-center gap-2">
+                            <i data-lucide="list-checks" class="w-4 h-4"></i> Instruction Steps
+                        </h2>
+                        <button id="addManualBtn" class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-bold hover:bg-blue-700">
+                             + Manual
+                        </button>
                     </div>
-                    <div class="flex-grow overflow-auto pr-2 custom-scrollbar">
+                    <div class="flex-grow overflow-auto pr-1 custom-scrollbar">
                         <table class="w-full text-sm border-collapse">
                             <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
                         </table>
@@ -145,10 +173,15 @@
                     </div>
                 </div>
 
+                <!-- Warnings -->
                 <div class="bg-white p-6 rounded-2xl border border-red-50 shadow-sm">
-                    <h2 class="font-bold text-red-600 text-sm uppercase mb-4 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Critical Warnings</h2>
+                    <h2 class="font-bold text-red-600 text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i> Critical Warnings
+                    </h2>
                     <div id="warningsContainer" class="space-y-3"></div>
-                    <button id="addWarningBtn" class="mt-4 w-full py-2 border-2 border-dashed border-red-100 text-red-400 text-xs rounded-xl font-bold">+ Add Warning</button>
+                    <button id="addWarningBtn" class="mt-4 w-full py-2 border-2 border-dashed border-red-100 text-red-400 text-xs rounded-xl font-bold flex items-center justify-center gap-1 hover:bg-red-50">
+                        <i data-lucide="plus-circle" class="w-3 h-3"></i> Add Warning
+                    </button>
                 </div>
             </div>
         </div>
@@ -168,8 +201,7 @@
         window.warnings = []; 
         window.currentMode = 'instruction';
         window.infoColor = '#3b82f6';
-
-        // Drawing Arrows State
+        
         let isDrawing = false;
         let startX, startY;
 
@@ -196,6 +228,7 @@
             customModal: document.getElementById('customModal'),
             modalTitle: document.getElementById('modalTitle'),
             modalMessage: document.getElementById('modalMessage'),
+            modalClose: document.getElementById('modalClose'),
             qrSection: document.getElementById('qrSection'),
             qrContainer: document.getElementById('qrContainer'),
             qrTitleText: document.getElementById('qrTitleText'),
@@ -214,7 +247,7 @@
 
         const ctx = els.mainCanvas.getContext('2d');
 
-        // Login
+        // Auth
         els.loginForm.onsubmit = (e) => {
             e.preventDefault();
             if (document.getElementById('usernameInput').value === ADMIN_U && document.getElementById('passwordInput').value === ADMIN_P) {
@@ -223,37 +256,36 @@
             } else { document.getElementById('loginError').classList.remove('hidden'); }
         };
 
-        // Tools Logic
+        // Tool Switching
         function setInfoMode(color) {
             window.currentMode = 'info';
             window.infoColor = color;
-            updateToolActive();
+            updateToolsUI();
         }
+        els.toolInstruction.onclick = () => { window.currentMode = 'instruction'; updateToolsUI(); };
+        els.toolArrow.onclick = () => { window.currentMode = 'arrow'; updateToolsUI(); };
+        els.toolOperator.onclick = () => { window.currentMode = 'illu'; updateToolsUI(); };
 
-        els.toolInstruction.onclick = () => { window.currentMode = 'instruction'; updateToolActive(); };
-        els.toolArrow.onclick = () => { window.currentMode = 'arrow'; updateToolActive(); };
-        els.toolOperator.onclick = () => { window.currentMode = 'illu'; updateToolActive(); };
-
-        function updateToolActive() {
-            [els.toolInstruction, els.toolArrow, els.toolOperator].forEach(btn => btn.classList.remove('active'));
+        function updateToolsUI() {
+            [els.toolInstruction, els.toolArrow, els.toolOperator].forEach(b => b.classList.remove('active'));
             if(window.currentMode === 'instruction') els.toolInstruction.classList.add('active');
             if(window.currentMode === 'arrow') els.toolArrow.classList.add('active');
             if(window.currentMode === 'illu') els.toolOperator.classList.add('active');
         }
 
-        // Canvas Interactions
+        // Canvas Events
         els.mainCanvas.onmousedown = (e) => {
-            if (window.currentMode !== 'arrow' || !window.images[window.activeIdx]) return;
+            if(window.currentMode !== 'arrow' || !window.images[window.activeIdx]) return;
             isDrawing = true;
-            const rect = els.mainCanvas.getBoundingClientRect();
-            startX = ((e.clientX - rect.left) / rect.width) * 100;
-            startY = ((e.clientY - rect.top) / rect.height) * 100;
+            const r = els.mainCanvas.getBoundingClientRect();
+            startX = ((e.clientX - r.left) / r.width) * 100;
+            startY = ((e.clientY - r.top) / r.height) * 100;
         };
 
         els.mainCanvas.onmouseup = (e) => {
-            const rect = els.mainCanvas.getBoundingClientRect();
-            const endX = ((e.clientX - rect.left) / rect.width) * 100;
-            const endY = ((e.clientY - rect.top) / rect.height) * 100;
+            const r = els.mainCanvas.getBoundingClientRect();
+            const endX = ((e.clientX - r.left) / r.width) * 100;
+            const endY = ((e.clientY - r.top) / r.height) * 100;
 
             if (isDrawing && window.currentMode === 'arrow') {
                 window.arrows.push({ x1: startX, y1: startY, x2: endX, y2: endY, imgIdx: window.activeIdx });
@@ -285,28 +317,29 @@
             els.mainCanvas.height = img.height * (1200 / img.width);
             ctx.drawImage(img, 0, 0, 1200, els.mainCanvas.height);
 
-            // Draw Arrows
-            window.arrows.forEach((arr, idx) => {
-                if(arr.imgIdx !== window.activeIdx) return;
-                drawArrowOnCtx(ctx, (arr.x1/100)*1200, (arr.y1/100)*els.mainCanvas.height, (arr.x2/100)*1200, (arr.y2/100)*els.mainCanvas.height, 6, '#000080');
+            // Render Arrows on main canvas
+            window.arrows.forEach(arr => {
+                if(arr.imgIdx === window.activeIdx) {
+                    drawArrow(ctx, (arr.x1/100)*1200, (arr.y1/100)*els.mainCanvas.height, (arr.x2/100)*1200, (arr.y2/100)*els.mainCanvas.height, 6, '#000080');
+                }
             });
 
             els.markersOverlay.innerHTML = '';
             els.tableBody.innerHTML = '';
-            let stepCount = 0;
+            let sCount = 0;
 
             window.points.forEach((p, idx) => {
-                if (p.type === 'instruction') stepCount++;
+                if (p.type === 'instruction') sCount++;
 
                 if (p.imgIdx === window.activeIdx && !p.isManual) {
                     const m = document.createElement('div');
                     if (p.type === 'instruction') {
-                        m.className = 'marker'; m.innerText = stepCount;
+                        m.className = 'marker'; m.innerText = sCount;
                     } else if (p.type === 'info') {
                         m.className = 'info-marker'; m.style.backgroundColor = p.color;
                     } else if (p.type === 'illu') {
                         m.className = 'illu-marker';
-                        m.innerHTML = `<div class="bg-orange-100 text-orange-600 px-2 py-0.5 rounded border border-orange-300 text-[10px] font-bold shadow-sm">OPERATOR SIDE</div>`;
+                        m.innerHTML = `<div class="bg-orange-500 text-white px-2 py-0.5 rounded border border-white text-[10px] font-bold shadow-md">OPERATOR SIDE</div>`;
                     }
                     m.style.left = p.px + '%'; m.style.top = p.py + '%';
                     m.onclick = (ev) => { ev.stopPropagation(); window.points.splice(idx, 1); renderAll(); };
@@ -314,38 +347,30 @@
                 }
 
                 if (p.type === 'instruction') {
-                    const tr = document.createElement('tr');
+                    const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50";
                     tr.innerHTML = `
-                        <td class="py-3 px-2 align-top"><span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px] bg-red-500">${stepCount}</span></td>
-                        <td class="py-2 px-2"><textarea class="w-full bg-transparent text-xs outline-none" rows="2" placeholder="Step description..." oninput="window.points[${idx}].description=this.value">${p.description}</textarea></td>
-                        <td class="py-2 px-2 text-right"><button onclick="window.points.splice(${idx}, 1); renderAll();" class="text-slate-300 hover:text-red-500">&times;</button></td>`;
+                        <td class="py-3 px-2 align-top"><span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px] bg-red-500">${sCount}</span></td>
+                        <td class="py-2 px-2"><textarea class="w-full bg-transparent text-xs outline-none resize-none font-medium" rows="2" placeholder="Step info..." oninput="window.points[${idx}].description=this.value">${p.description}</textarea></td>
+                        <td class="py-2 px-2 text-right"><button onclick="window.points.splice(${idx}, 1); renderAll();" class="text-slate-300 hover:text-red-500 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button></td>`;
                     els.tableBody.appendChild(tr);
                 }
             });
-            els.emptyTableState.classList.toggle('hidden', stepCount > 0);
+            els.emptyTableState.classList.toggle('hidden', sCount > 0);
             lucide.createIcons();
         }
 
-        function drawArrowOnCtx(context, fromx, fromy, tox, toy, width, color) {
-            const headlen = 15;
-            const angle = Math.atan2(toy - fromy, tox - fromx);
-            context.beginPath();
-            context.moveTo(fromx, fromy);
-            context.lineTo(tox, toy);
-            context.strokeStyle = color;
-            context.lineWidth = width;
-            context.stroke();
-            context.beginPath();
-            context.moveTo(tox, toy);
-            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 7), toy - headlen * Math.sin(angle - Math.PI / 7));
-            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 7), toy - headlen * Math.sin(angle + Math.PI / 7));
-            context.lineTo(tox, toy);
-            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 7), toy - headlen * Math.sin(angle - Math.PI / 7));
-            context.fillStyle = color;
-            context.fill();
+        function drawArrow(c, fx, fy, tx, ty, w, color) {
+            const hl = 16;
+            const a = Math.atan2(ty - fy, tx - fx);
+            c.beginPath(); c.moveTo(fx, fy); c.lineTo(tx, ty);
+            c.strokeStyle = color; c.lineWidth = w; c.stroke();
+            c.beginPath(); c.moveTo(tx, ty);
+            c.lineTo(tx - hl * Math.cos(a - Math.PI / 7), ty - hl * Math.sin(a - Math.PI / 7));
+            c.lineTo(tx - hl * Math.cos(a + Math.PI / 7), ty - hl * Math.sin(a + Math.PI / 7));
+            c.closePath(); c.fillStyle = color; c.fill();
         }
 
-        // Rest of Logic (Aynen Korundu: Logo, File, Drive, PDF Export, QR)
+        // Image Loaders
         els.logoInput.onchange = (e) => {
             const f = e.target.files[0]; if(!f) return;
             const r = new FileReader(); r.onload = (ev) => {
@@ -372,7 +397,6 @@
         }
 
         els.tabBtns.forEach((btn, idx) => btn.onclick = () => { window.activeIdx = idx; els.tabBtns.forEach((b, i) => b.classList.toggle('active', i === idx)); renderAll(); });
-
         els.addManualBtn.onclick = () => { window.points.push({ px: null, py: null, description: '', type: 'instruction', imgIdx: -1, isManual: true }); renderAll(); };
         els.addWarningBtn.onclick = () => { window.warnings.push({ text: '' }); renderWarnings(); };
 
@@ -380,68 +404,137 @@
             els.warningsContainer.innerHTML = '';
             window.warnings.forEach((w, i) => {
                 const d = document.createElement('div'); d.className = "flex gap-2 bg-red-50 p-2 rounded border border-red-100 items-start";
-                d.innerHTML = `<textarea class="flex-grow bg-transparent text-xs text-red-700 outline-none" placeholder="Warning..." oninput="window.warnings[${i}].text=this.value">${w.text}</textarea>
-                               <button onclick="window.warnings.splice(${i}, 1); renderWarnings();" class="text-red-300 font-bold">&times;</button>`;
+                d.innerHTML = `<textarea class="flex-grow bg-transparent text-xs text-red-700 outline-none resize-none overflow-hidden" rows="1" placeholder="Critical warning..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';window.warnings[${i}].text=this.value">${w.text}</textarea>
+                               <button onclick="window.warnings.splice(${i}, 1); renderWarnings();" class="text-red-300 hover:text-red-500 font-bold">&times;</button>`;
                 els.warningsContainer.appendChild(d);
             });
         }
 
-        // --- Drive & PDF Functions (Simplified reference to maintain logic) ---
+        // PDF & Drive Logic
         async function createPdfBlob() {
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-            const exportCanvas = document.createElement('canvas');
-            const ex = exportCanvas.getContext('2d');
-            exportCanvas.width = 1240; exportCanvas.height = 1754;
+            const exCanvas = document.createElement('canvas');
+            const ex = exCanvas.getContext('2d');
+            exCanvas.width = 1240; exCanvas.height = 1754;
+            
+            // Header
             ex.fillStyle = 'white'; ex.fillRect(0, 0, 1240, 1754);
+            let y = 60;
+            if (window.companyLogo) ex.drawImage(window.companyLogo, 60, y, 120, 50);
+            ex.fillStyle = '#000080'; ex.font = 'bold 36px Arial'; 
+            ex.fillText((els.sopTitleInput.value || 'SOP DOCUMENT').toUpperCase(), 220, y + 35);
+            y += 80;
 
-            // PDF drawing logic (Simplified for space, matching your original style)
-            let cy = 60;
-            if (window.companyLogo) ex.drawImage(window.companyLogo, 60, cy, 100, 40);
-            ex.fillStyle = '#000080'; ex.font = 'bold 36px Arial'; ex.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP', 200, cy + 30);
-            cy += 100;
-
-            for (let i = 0; i < 2; i++) {
+            // Images
+            for(let i=0; i<2; i++) {
                 const img = window.images[i];
-                if (!img) continue;
-                const dw = 800; const dh = (img.height * dw) / img.width;
+                if(!img) continue;
+                const dw = 900; const dh = (img.height * dw) / img.width;
                 const dx = (1240 - dw) / 2;
-                ex.drawImage(img, dx, cy, dw, dh);
-                
-                // Draw arrows on PDF
+                ex.drawImage(img, dx, y, dw, dh);
+
+                // Arrows on PDF
                 window.arrows.forEach(a => {
-                    if(a.imgIdx === i) drawArrowOnCtx(ex, dx+(a.x1/100)*dw, cy+(a.y1/100)*dh, dx+(a.x2/100)*dw, cy+(a.y2/100)*dh, 4, '#000080');
+                    if(a.imgIdx === i) drawArrow(ex, dx+(a.x1/100)*dw, y+(a.y1/100)*dh, dx+(a.x2/100)*dw, y+(a.y2/100)*dh, 4, '#000080');
                 });
 
-                // Draw Markers on PDF
-                let sc = 0;
+                // Markers on PDF
+                let sP = 0;
                 window.points.forEach(p => {
-                    if (p.type === 'instruction') sc++;
-                    if (p.imgIdx === i && !p.isManual) {
-                        const mx = dx + (p.px/100)*dw; const my = cy + (p.py/100)*dh;
-                        ex.beginPath(); ex.arc(mx, my, 12, 0, Math.PI*2);
-                        if(p.type === 'instruction') { ex.fillStyle = 'red'; ex.fill(); ex.fillStyle = 'white'; ex.font = 'bold 14px Arial'; ex.textAlign='center'; ex.fillText(sc, mx, my+5); }
-                        else if(p.type === 'info') { ex.fillStyle = p.color; ex.fill(); }
-                        else if(p.type === 'illu') { ex.fillStyle = 'orange'; ex.fillRect(mx-40, my-10, 80, 20); ex.fillStyle='white'; ex.font='bold 10px Arial'; ex.fillText("OP SIDE", mx, my+3); }
+                    if(p.type === 'instruction') sP++;
+                    if(p.imgIdx === i && !p.isManual) {
+                        const mx = dx + (p.px/100)*dw; const my = y + (p.py/100)*dh;
+                        if(p.type === 'instruction') {
+                            ex.beginPath(); ex.arc(mx, my, 14, 0, Math.PI*2); ex.fillStyle = 'red'; ex.fill();
+                            ex.fillStyle = 'white'; ex.font = 'bold 16px Arial'; ex.textAlign = 'center'; ex.fillText(sP, mx, my + 6);
+                        } else if(p.type === 'info') {
+                            ex.beginPath(); ex.arc(mx, my, 10, 0, Math.PI*2); ex.fillStyle = p.color; ex.fill();
+                        } else if(p.type === 'illu') {
+                            ex.fillStyle = 'orange'; ex.fillRect(mx-40, my-10, 80, 20);
+                            ex.fillStyle = 'white'; ex.font = 'bold 10px Arial'; ex.textAlign = 'center'; ex.fillText("OP SIDE", mx, my + 4);
+                        }
                     }
                 });
-                cy += dh + 40;
+                y += dh + 40;
             }
-            pdf.addImage(exportCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
+
+            // Steps Table
+            ex.fillStyle = '#f1f5f9'; ex.fillRect(60, y, 1120, 40);
+            ex.fillStyle = '#000080'; ex.font = 'bold 24px Arial'; ex.textAlign='left'; ex.fillText("INSTRUCTION STEPS", 80, y + 28);
+            y += 60;
+            let sIdx = 0;
+            window.points.forEach(p => {
+                if(p.type === 'instruction') {
+                    sIdx++;
+                    ex.fillStyle = 'red'; ex.beginPath(); ex.arc(80, y, 12, 0, Math.PI*2); ex.fill();
+                    ex.fillStyle = 'white'; ex.font = 'bold 14px Arial'; ex.textAlign='center'; ex.fillText(sIdx, 80, y+5);
+                    ex.fillStyle = '#334155'; ex.font = '18px Arial'; ex.textAlign='left';
+                    ex.fillText(p.description || "No description", 110, y+6);
+                    y += 35;
+                }
+            });
+
+            // Warnings
+            if(window.warnings.length > 0) {
+                y += 20;
+                ex.fillStyle = '#fee2e2'; ex.fillRect(60, y, 1120, 40);
+                ex.fillStyle = '#dc2626'; ex.font = 'bold 24px Arial'; ex.fillText("CRITICAL WARNINGS", 80, y + 28);
+                y += 60;
+                window.warnings.forEach(w => {
+                    ex.fillStyle = '#dc2626'; ex.fillText("•", 80, y);
+                    ex.fillStyle = '#334155'; ex.font = '18px Arial'; ex.fillText(w.text, 105, y);
+                    y += 30;
+                });
+            }
+
+            pdf.addImage(exCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
             return pdf.output('blob');
         }
 
         // Export Actions
         els.exportPdfBtn.onclick = async () => {
-            els.loading.classList.remove('hidden');
+            els.loadingText.innerText = "Creating PDF..."; els.loading.classList.remove('hidden');
             const blob = await createPdfBlob();
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = `SOP_${els.sopTitleInput.value || 'Doc'}.pdf`; a.click();
             els.loading.classList.add('hidden');
         };
 
+        // --- Drive Helper Functions ---
+        async function uploadToGoogleDrive(blob) {
+            tokenClient.callback = (resp) => {
+                if (resp.error) return;
+                executeUpload(resp.access_token, blob);
+            };
+            tokenClient.requestAccessToken({ prompt: '' });
+        }
+
+        async function executeUpload(token, blob) {
+            els.loadingText.innerText = "Uploading to Drive..."; els.loading.classList.remove('hidden');
+            const folderName = els.sopSubtitleInput.value.trim() || "SOP Projects";
+            const metadata = { name: `SOP_${els.sopTitleInput.value || 'Doc'}.pdf`, mimeType: 'application/pdf' };
+            
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const b64 = btoa(new Uint8Array(reader.result).reduce((a,b)=>a+String.fromCharCode(b),''));
+                const boundary = 'eldor_upload_boundary';
+                const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(metadata)}\n--${boundary}\nContent-Type: application/pdf\nContent-Transfer-Encoding: base64\n\n${b64}\n--${boundary}--`;
+                
+                try {
+                    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body
+                    });
+                    const data = await res.json();
+                    els.loading.classList.add('hidden');
+                    if(res.ok) showModal("Success", "Document sent to Drive.", data.webViewLink);
+                    else showModal("Error", "Could not upload. Try again.");
+                } catch(e) { els.loading.classList.add('hidden'); }
+            };
+            reader.readAsArrayBuffer(blob);
+        }
+
         els.exportDriveBtn.onclick = async () => { 
             const blob = await createPdfBlob(); 
-            // Reuse your existing Drive upload logic
             uploadToGoogleDrive(blob); 
         };
 
@@ -458,39 +551,13 @@
         }
         els.modalClose.onclick = () => els.customModal.classList.replace('flex', 'hidden');
 
-        // Initial Load
+        els.resetBtn.onclick = () => { if(confirm("Clear all data?")) location.reload(); };
+
         window.onload = () => {
             lucide.createIcons();
             gapi.load('client', () => { gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] }); });
             tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_CLIENT_ID, scope: SCOPES, callback: '' });
         };
-
-        // --- Drive Helper Functions (Directly from your previous stable version) ---
-        async function uploadToGoogleDrive(blob) {
-            tokenClient.callback = async (resp) => {
-                if (resp.error) return;
-                executeUpload(resp.access_token, blob);
-            };
-            tokenClient.requestAccessToken({ prompt: '' });
-        }
-
-        async function executeUpload(token, blob) {
-            els.loadingText.innerText = "Uploading..."; els.loading.classList.remove('hidden');
-            const metadata = { name: `SOP_${els.sopTitleInput.value || 'Doc'}.pdf`, mimeType: 'application/pdf' };
-            const reader = new FileReader();
-            reader.onload = async () => {
-                const b64 = btoa(new Uint8Array(reader.result).reduce((a,b)=>a+String.fromCharCode(b),''));
-                const boundary = 'foo_bar';
-                const body = `--${boundary}\nContent-Type: application/json\n\n${JSON.stringify(metadata)}\n--${boundary}\nContent-Type: application/pdf\nContent-Transfer-Encoding: base64\n\n${b64}\n--${boundary}--`;
-                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-                    method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body
-                });
-                const data = await res.json();
-                els.loading.classList.add('hidden');
-                if(res.ok) showModal("Success", "Sent to Drive.", data.webViewLink);
-            };
-            reader.readAsArrayBuffer(blob);
-        }
     </script>
 </body>
 </html>
