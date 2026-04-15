@@ -20,7 +20,6 @@
         .canvas-container { position: relative; display: inline-block; cursor: crosshair; width: 100%; background: #eee; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
         canvas { display: block; max-width: 100%; height: auto; }
         
-        /* Marker Styles */
         .marker { position: absolute; width: 28px; height: 28px; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; transform: translate(-50%, -50%); border: 2px solid white; pointer-events: auto; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 10; }
         .marker-red { background: rgba(239, 68, 68, 0.95); }
         .marker-blue { background: rgba(59, 130, 246, 0.95); }
@@ -28,7 +27,6 @@
         .marker-orange { background: rgba(249, 115, 22, 0.95); }
         .marker-purple { background: rgba(168, 85, 247, 0.95); }
 
-        /* Operator Side Label Style */
         .marker-operator {
             position: absolute;
             background: #000080;
@@ -49,7 +47,6 @@
             cursor: pointer;
         }
 
-        /* Arrow Delete Button */
         .arrow-delete {
             position: absolute;
             width: 20px;
@@ -78,7 +75,6 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* Cropper Modal Fixes */
         .cropper-container { width: 100% !important; }
         #cropModalImage { max-width: 100%; display: block; }
     </style>
@@ -161,7 +157,6 @@
     <div class="max-w-6xl mx-auto space-y-6 blur-sm pointer-events-none transition-all duration-700" id="mainContent">
         <!-- Top Panel -->
         <div class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <!-- Logo Input -->
             <div onclick="document.getElementById('logoInput').click()" class="w-24 h-24 shrink-0 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-[#000080] transition-colors overflow-hidden relative group bg-slate-50">
                 <img id="logoPreview" class="hidden w-full h-full object-contain p-2">
                 <div id="logoPlaceholder" class="flex flex-col items-center gap-1">
@@ -171,13 +166,11 @@
                 <input type="file" id="logoInput" class="hidden" accept="image/*">
             </div>
 
-            <!-- Titles -->
             <div class="flex-grow flex flex-col gap-4 w-full">
                 <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] focus:outline-none font-bold text-2xl py-1 transition-colors text-[#000080]" placeholder="SOP TITLE">
                 <input type="text" id="sopSubtitleInput" class="w-full text-base border-b-2 border-slate-300 focus:border-slate-500 focus:outline-none py-1 transition-colors text-slate-500 font-medium" placeholder="PROJECT NAME">
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex flex-col gap-3 shrink-0 ml-auto items-end">
                 <div class="flex bg-[#000080] rounded-lg shadow-md overflow-hidden h-12">
                     <button id="exportPdfBtn" class="px-6 text-[13px] text-white font-bold hover:bg-[#000066] border-r border-[#ffffff22] flex items-center gap-2">
@@ -192,7 +185,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left: Editor Area -->
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                     <div class="flex border-b border-slate-100 mb-6 gap-6">
@@ -252,9 +244,7 @@
                 </div>
             </div>
 
-            <!-- Right: Info Panel -->
             <div class="space-y-6">
-                <!-- Steps List -->
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[260px]">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="font-bold text-[#000080] text-sm uppercase tracking-wider flex items-center gap-2">
@@ -274,7 +264,6 @@
                     </div>
                 </div>
 
-                <!-- Warnings Panel -->
                 <div class="bg-white p-6 rounded-2xl border border-red-50 shadow-sm">
                     <h2 class="font-bold text-red-600 text-sm uppercase tracking-wider mb-5 flex items-center gap-2">
                         <i data-lucide="alert-triangle" class="w-4 h-4"></i> CRITICAL WARNINGS
@@ -288,7 +277,6 @@
         </div>
     </div>
 
-    <!-- Export Canvas -->
     <canvas id="exportCanvas" class="hidden"></canvas>
 
     <script>
@@ -377,13 +365,7 @@
             els.qrSection.classList.toggle('hidden', !qr);
             if (qr) {
                 els.qrContainer.innerHTML = '';
-                new QRCode(els.qrContainer, { 
-                    text: qr, 
-                    width: 160, 
-                    height: 160, 
-                    colorDark: "#000080",
-                    useSVG: false
-                });
+                new QRCode(els.qrContainer, { text: qr, width: 160, height: 160, colorDark: "#000080", useSVG: false });
                 els.qrLinkText.innerText = qr;
                 els.qrTitleText.innerText = els.sopTitleInput.value || "SOP DOCUMENT";
             }
@@ -536,53 +518,103 @@
         }
 
         async function createPdfBlob() {
-            const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-            const exportCanvas = document.createElement('canvas'); const ex = exportCanvas.getContext('2d');
-            exportCanvas.width = 1240; exportCanvas.height = 1754;
-            ex.fillStyle = 'white'; ex.fillRect(0, 0, 1240, 1754);
-            let currentY = 60;
-            if (window.companyLogo) { const logoRatio = window.companyLogo.width / window.companyLogo.height; ex.drawImage(window.companyLogo, 60, currentY, 80 * logoRatio, 80); }
-            ex.fillStyle = '#000080'; ex.font = 'bold 44px Arial'; ex.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP DOCUMENT', 300, currentY + 45);
-            ex.fillStyle = '#64748b'; ex.font = '500 28px Arial'; ex.fillText(els.sopSubtitleInput.value || '', 300, currentY + 85);
-            currentY += 130; ex.strokeStyle = '#000080'; ex.lineWidth = 3; ex.beginPath(); ex.moveTo(60, currentY); ex.lineTo(1180, currentY); ex.stroke();
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = 210, pageHeight = 297;
+            const canvasWidth = 1240, canvasHeight = 1754;
+            const margin = 60, threshold = 1600;
+
+            let currentY = margin;
+            let tempCanvas = document.createElement('canvas');
+            let tctx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvasWidth; tempCanvas.height = canvasHeight;
+
+            const resetCanvas = () => {
+                tctx.fillStyle = 'white'; tctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                currentY = margin;
+            };
+
+            const addPageToPdf = () => {
+                pdf.addImage(tempCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageWidth, pageHeight);
+                resetCanvas();
+            };
+
+            resetCanvas();
+
+            // 1. Header (Always Page 1)
+            if (window.companyLogo) {
+                const logoRatio = window.companyLogo.width / window.companyLogo.height;
+                tctx.drawImage(window.companyLogo, 60, currentY, 80 * logoRatio, 80);
+            }
+            tctx.fillStyle = '#000080'; tctx.font = 'bold 44px Arial'; tctx.fillText(els.sopTitleInput.value.toUpperCase() || 'SOP DOCUMENT', 300, currentY + 45);
+            tctx.fillStyle = '#64748b'; tctx.font = '500 28px Arial'; tctx.fillText(els.sopSubtitleInput.value || '', 300, currentY + 85);
+            currentY += 130; tctx.strokeStyle = '#000080'; tctx.lineWidth = 3; tctx.beginPath(); tctx.moveTo(60, currentY); tctx.lineTo(1180, currentY); tctx.stroke();
             currentY += 40;
+
+            // 2. Images (Attempt to fit on Page 1)
             for (let i = 0; i < 2; i++) {
                 const img = window.images[i]; if (!img) continue;
-                const drawWidth = 600, drawHeight = (img.height * 600) / img.width, drawX = (1240 - 600) / 2;
-                ex.drawImage(img, drawX, currentY, drawWidth, drawHeight);
-                window.arrows.forEach(a => { if (a.imgIdx === i) drawArrowHead(ex, drawX + (a.x1/100)*drawWidth, currentY + (a.y1/100)*drawHeight, drawX + (a.x2/100)*drawWidth, currentY + (a.y2/100)*drawHeight, a.color); });
+                const drawWidth = 550; const drawHeight = (img.height * drawWidth) / img.width;
+                const drawX = (canvasWidth - drawWidth) / 2;
+
+                if (currentY + drawHeight > threshold) { addPageToPdf(); }
+
+                tctx.drawImage(img, drawX, currentY, drawWidth, drawHeight);
+                window.arrows.forEach(a => { if (a.imgIdx === i) drawArrowHead(tctx, drawX + (a.x1/100)*drawWidth, currentY + (a.y1/100)*drawHeight, drawX + (a.x2/100)*drawWidth, currentY + (a.y2/100)*drawHeight, a.color); });
+                
                 let ic = 0;
                 window.points.forEach(p => {
                     if (p.type === 'red') ic++;
                     if (p.imgIdx === i && !p.isManual) {
-                        const mx = drawX + (p.px / 100) * drawWidth, my = currentY + (p.py / 100) * drawHeight;
-                        if (p.type === 'operator') { ex.fillStyle = '#000080'; ex.beginPath(); ex.roundRect(mx-70, my-15, 140, 30, 5); ex.fill(); ex.fillStyle = 'white'; ex.font = 'bold 12px Arial'; ex.textAlign = 'center'; ex.fillText('OPERATOR SIDE', mx, my + 4); } 
-                        else { ex.beginPath(); ex.arc(mx, my, 18, 0, Math.PI * 2); ex.fillStyle = getColorByType(p.type); ex.fill(); if (p.type === 'red') { ex.fillStyle = 'white'; ex.font = 'bold 22px Arial'; ex.textAlign = 'center'; ex.fillText(ic, mx, my + 7); } }
+                        const mx = drawX + (p.px/100)*drawWidth, my = currentY + (p.py/100)*drawHeight;
+                        if (p.type === 'operator') { tctx.fillStyle='#000080'; tctx.beginPath(); tctx.roundRect(mx-70, my-15, 140, 30, 5); tctx.fill(); tctx.fillStyle='white'; tctx.font='bold 12px Arial'; tctx.textAlign='center'; tctx.fillText('OPERATOR SIDE', mx, my+4); }
+                        else { tctx.beginPath(); tctx.arc(mx, my, 18, 0, Math.PI*2); tctx.fillStyle=getColorByType(p.type); tctx.fill(); if(p.type==='red'){ tctx.fillStyle='white'; tctx.font='bold 22px Arial'; tctx.textAlign='center'; tctx.fillText(ic, mx, my+7); } }
                     }
                 });
-                currentY += drawHeight + 30;
+                currentY += drawHeight + 40;
             }
-            ex.fillStyle = '#f1f5f9'; ex.fillRect(60, currentY, 1120, 50);
-            ex.fillStyle = '#000080'; ex.font = 'bold 30px Arial'; ex.fillText('INSTRUCTION STEPS', 80, currentY + 35);
+
+            // 3. Instruction Steps
+            if (currentY > threshold - 200) addPageToPdf();
+            tctx.fillStyle = '#f1f5f9'; tctx.fillRect(60, currentY, 1120, 50);
+            tctx.fillStyle = '#000080'; tctx.font = 'bold 30px Arial'; tctx.textAlign='left'; tctx.fillText('INSTRUCTION STEPS', 80, currentY + 35);
             currentY += 80;
+
             let ic_list = 0;
             window.points.forEach(p => {
                 if (p.type === 'red' || p.isManual) {
-                    ic_list++; ex.beginPath(); ex.arc(85, currentY + 15, 20, 0, Math.PI * 2); ex.fillStyle = '#000080'; ex.fill();
-                    ex.fillStyle = 'white'; ex.font = 'bold 22px Arial'; ex.textAlign = 'center'; ex.fillText(ic_list, 85, currentY + 22);
-                    ex.fillStyle = '#334155'; ex.font = 'bold 24px Arial'; ex.textAlign = 'left';
-                    const lines = pdf.splitTextToSize(p.description || "No description provided", 200);
-                    ex.fillText(lines[0], 130, currentY + 25);
-                    currentY += 60;
+                    ic_list++;
+                    const desc = p.description || "No description provided";
+                    const lines = pdf.splitTextToSize(desc, 240);
+                    const stepHeight = Math.max(60, lines.length * 35);
+
+                    if (currentY + stepHeight > threshold) addPageToPdf();
+
+                    tctx.beginPath(); tctx.arc(85, currentY + 15, 20, 0, Math.PI * 2); tctx.fillStyle = '#000080'; tctx.fill();
+                    tctx.fillStyle = 'white'; tctx.font = 'bold 22px Arial'; tctx.textAlign = 'center'; tctx.fillText(ic_list, 85, currentY + 22);
+                    tctx.fillStyle = '#334155'; tctx.font = 'bold 24px Arial'; tctx.textAlign = 'left';
+                    lines.forEach((line, lidx) => { tctx.fillText(line, 130, currentY + 25 + (lidx * 35)); });
+                    currentY += stepHeight + 20;
                 }
             });
+
+            // 4. Critical Warnings
             if (window.warnings.length > 0) {
-                currentY += 20; ex.fillStyle = '#fef2f2'; ex.fillRect(60, currentY, 1120, 50);
-                ex.fillStyle = '#dc2626'; ex.font = 'bold 30px Arial'; ex.fillText('CRITICAL WARNINGS', 80, currentY + 35);
+                if (currentY > threshold - 150) addPageToPdf();
+                currentY += 20; tctx.fillStyle = '#fef2f2'; tctx.fillRect(60, currentY, 1120, 50);
+                tctx.fillStyle = '#dc2626'; tctx.font = 'bold 30px Arial'; tctx.fillText('CRITICAL WARNINGS', 80, currentY + 35);
                 currentY += 70;
-                window.warnings.forEach(w => { ex.fillStyle = '#dc2626'; ex.fillText('•', 80, currentY); ex.fillStyle = '#334155'; ex.font = '24px Arial'; ex.fillText(w.text || "", 110, currentY + 5); currentY += 40; });
+                window.warnings.forEach(w => {
+                    const lines = pdf.splitTextToSize(w.text || "", 240);
+                    if (currentY + (lines.length * 40) > threshold) addPageToPdf();
+                    tctx.fillStyle = '#dc2626'; tctx.fillText('•', 80, currentY);
+                    tctx.fillStyle = '#334155'; tctx.font = '24px Arial';
+                    lines.forEach((line, lidx) => { tctx.fillText(line, 110, currentY + 5 + (lidx * 35)); });
+                    currentY += (lines.length * 35) + 15;
+                });
             }
-            pdf.addImage(exportCanvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, 210, 297);
+
+            pdf.addImage(tempCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageWidth, pageHeight);
             return pdf.output('blob');
         }
 
