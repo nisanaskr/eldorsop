@@ -54,15 +54,11 @@
             background: white;
             color: #ef4444;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: bold;
             transform: translate(-50%, -50%);
             border: 1px solid #e2e8f0;
-            pointer-events: auto;
-            cursor: pointer;
+            pointer-events: auto; cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 15;
         }
@@ -404,7 +400,8 @@
         els.downloadQrBtn.onclick = () => {
             const qrSource = els.qrContainer.querySelector('canvas') || els.qrContainer.querySelector('img');
             if (!qrSource) return;
-            const sopTitle = (els.sopTitleInput.value || "SOP DOCUMENT").toUpperCase();
+            const rawTitle = els.sopTitleInput.value || "SOP";
+            const sopTitleDisplay = rawTitle.toUpperCase();
             const dlCanvas = document.createElement('canvas');
             const dctx = dlCanvas.getContext('2d');
             const qrWidth = 160, padding = 20, fontSize = 14;
@@ -413,8 +410,13 @@
             dctx.fillStyle = 'white'; dctx.fillRect(0, 0, dlCanvas.width, dlCanvas.height);
             dctx.drawImage(qrSource, padding, padding, qrWidth, qrWidth);
             dctx.fillStyle = '#000080'; dctx.font = `bold ${fontSize}px Inter, sans-serif`; dctx.textAlign = 'center';
-            dctx.fillText(sopTitle, dlCanvas.width / 2, padding + qrWidth + 20);
-            const a = document.createElement('a'); a.href = dlCanvas.toDataURL("image/png"); a.download = `SOP_QR.png`; a.click();
+            dctx.fillText(sopTitleDisplay, dlCanvas.width / 2, padding + qrWidth + 20);
+            
+            const a = document.createElement('a');
+            a.href = dlCanvas.toDataURL("image/png");
+            const safeFileName = rawTitle.replace(/\s+/g, '_');
+            a.download = `${safeFileName}_QR.png`;
+            a.click();
         };
 
         els.tabBtns.forEach((btn, idx) => btn.onclick = () => { window.activeIdx = idx; els.tabBtns.forEach((b, i) => b.classList.toggle('active', i === idx)); renderAll(); });
@@ -596,7 +598,6 @@
 
             resetCanvas();
 
-            // 1. IMAGES (Side-by-side logic)
             const hasImg0 = !!window.images[0];
             const hasImg1 = !!window.images[1];
             const drawWidth = 480;
@@ -608,9 +609,7 @@
                 const totalW = (drawWidth * 2) + imgGap;
                 const startX = (canvasWidth - totalW) / 2;
                 const maxHeight = Math.max(h0, h1);
-
                 if (currentY + maxHeight > threshold) addNewPage();
-
                 drawSingleImageToPdf(0, startX, currentY, drawWidth, h0);
                 drawSingleImageToPdf(1, startX + drawWidth + imgGap, currentY, drawWidth, h1);
                 currentY += maxHeight + 35;
@@ -618,14 +617,11 @@
                 const activeImgIdx = hasImg0 ? 0 : 1;
                 const activeH = hasImg0 ? h0 : h1;
                 const drawX = (canvasWidth - drawWidth) / 2;
-
                 if (currentY + activeH > threshold) addNewPage();
-
                 drawSingleImageToPdf(activeImgIdx, drawX, currentY, drawWidth, activeH);
                 currentY += activeH + 35;
             }
 
-            // 2. INSTRUCTION STEPS
             if (currentY > threshold - 150) addNewPage();
             tctx.fillStyle = '#f1f5f9';
             tctx.fillRect(margin, currentY, canvasWidth - (margin * 2), 40);
@@ -652,7 +648,6 @@
                 }
             });
 
-            // 3. CRITICAL WARNINGS
             if (window.warnings.length > 0) {
                 if (currentY > threshold - 100) addNewPage();
                 currentY += 10;
@@ -687,7 +682,6 @@
                 a.download = `SOP_${(els.sopTitleInput.value || 'Document').replace(/\s+/g, '_')}.pdf`; 
                 a.click(); 
             } catch (err) {
-                console.error(err);
                 showModal("Error", "Failed to generate PDF properly.");
             } finally { 
                 els.loading.classList.add('hidden'); 
@@ -695,12 +689,8 @@
         };
 
         els.exportDriveBtn.onclick = async () => { 
-            try {
-                const blob = await createPdfBlob(); 
-                uploadToGoogleDrive(blob); 
-            } catch (err) {
-                showModal("Error", "Failed to process PDF for Drive.");
-            }
+            try { const blob = await createPdfBlob(); uploadToGoogleDrive(blob); } 
+            catch (err) { showModal("Error", "Failed to process PDF for Drive."); }
         };
 
         els.resetBtn.onclick = () => { if(confirm("All data will be cleared. Continue?")) { window.points = []; window.images = [null, null]; window.warnings = []; window.arrows = []; renderAll(); renderWarnings(); } };
